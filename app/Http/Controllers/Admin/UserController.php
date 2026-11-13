@@ -35,11 +35,19 @@ class UserController extends Controller
 
         $role = UserRole::from($request->validated('role'));
         $connection = DB::connection();
-        $updateRole = fn (): User => $connection->transaction(function () use ($connection, $role, $user): User {
+        $actorId = $request->user()->getKey();
+        $updateRole = fn (): User => $connection->transaction(function () use ($connection, $role, $user, $actorId): User {
+            $actor = User::on($connection->getName())
+                ->whereKey($actorId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
             $target = User::on($connection->getName())
                 ->whereKey($user->getKey())
                 ->lockForUpdate()
                 ->firstOrFail();
+
+            Gate::forUser($actor)->authorize('updateRole', $target);
 
             if ($target->isAdmin() && $role === UserRole::Member) {
                 $adminIds = User::on($connection->getName())

@@ -99,6 +99,23 @@ class AdminUserManagementTest extends TestCase
         $this->assertSame(UserRole::Admin, $admin->fresh()->role);
     }
 
+    public function test_a_stale_admin_cannot_change_roles_after_becoming_a_member(): void
+    {
+        $staleAdmin = $this->createAdmin('Stale Admin');
+        $target = User::factory()->create();
+
+        User::query()
+            ->whereKey($staleAdmin->getKey())
+            ->update(['role' => UserRole::Member->value]);
+
+        $this->actingAs($staleAdmin)
+            ->patch(route('admin.users.role.update', $target), ['role' => UserRole::Admin->value])
+            ->assertForbidden();
+
+        $this->assertSame(UserRole::Member, $staleAdmin->fresh()->role);
+        $this->assertSame(UserRole::Member, $target->fresh()->role);
+    }
+
     public function test_a_stale_admin_request_cannot_demote_the_last_remaining_admin(): void
     {
         $firstAdmin = $this->createAdmin('First Admin');
@@ -110,10 +127,8 @@ class AdminUserManagementTest extends TestCase
 
         // Simulates a request authenticated as Admin before the first concurrent update committed.
         $this->actingAs($secondAdmin)
-            ->from(route('admin.users.index'))
             ->patch(route('admin.users.role.update', $firstAdmin), ['role' => UserRole::Member->value])
-            ->assertRedirect(route('admin.users.index'))
-            ->assertSessionHasErrors('role');
+            ->assertForbidden();
 
         $this->assertSame(UserRole::Admin, $firstAdmin->fresh()->role);
         $this->assertSame(UserRole::Member, $secondAdmin->fresh()->role);
