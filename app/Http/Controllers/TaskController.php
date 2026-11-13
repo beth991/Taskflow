@@ -8,9 +8,11 @@ use App\Http\Requests\Tasks\StoreTaskRequest;
 use App\Http\Requests\Tasks\TaskIndexRequest;
 use App\Http\Requests\Tasks\UpdateTaskRequest;
 use App\Http\Requests\Tasks\UpdateTaskStatusRequest;
+use App\Models\Tag;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
@@ -21,7 +23,17 @@ class TaskController extends Controller
         Gate::authorize('viewAny', Task::class);
 
         $filter = $request->validated('filter', 'all');
-        $tasks = $request->user()->tasksCreated()->with('assignees:id,name')->latest();
+        $user = $request->user();
+        $tasks = Task::query()
+            ->where(function ($query) use ($user): void {
+                $query->where('user_id', $user->getKey());
+
+                if ($user->isMember()) {
+                    $query->orWhereHas('assignees', fn ($assignees) => $assignees->whereKey($user->getKey()));
+                }
+            })
+            ->with(['assignees:id,name', 'creator:id,name', 'completedBy:id,name', 'tags:id,name'])
+            ->latest();
 
         if ($filter === 'completed') {
             $tasks->where('is_completed', true);
@@ -32,6 +44,7 @@ class TaskController extends Controller
         return view('tasks.index', [
             'tasks' => $tasks->paginate(10)->withQueryString(),
             'filter' => $filter,
+            'user' => $user,
         ]);
     }
 
@@ -39,17 +52,34 @@ class TaskController extends Controller
     {
         Gate::authorize('create', Task::class);
 
-        return view('tasks.create', ['task' => new Task]);
+        return view('tasks.create', [
+            'task' => new Task,
+            'availableTags' => Tag::query()->orderBy('name')->get(['id', 'name']),
+        ]);
+    }
+
+    public function show(string $task): View
+    {
+        $task = $this->accessibleTask(auth()->user(), $task);
+        Gate::authorize('view', $task);
+        $task->load(['assignees:id,name', 'creator:id,name', 'completedBy:id,name', 'tags:id,name']);
+
+        return view('tasks.show', compact('task'));
     }
 
     public function store(StoreTaskRequest $request): RedirectResponse
     {
         Gate::authorize('create', Task::class);
 
-        $request->user()->tasksCreated()->create([
-            'title' => $request->validated('title'),
-            'is_completed' => false,
-        ]);
+        $validated = $request->validated();
+        DB::transaction(function () use ($request, $validated): void {
+            $task = $request->user()->tasksCreated()->create([
+                'title' => $validated['title'],
+                'notes' => $validated['notes'] ?? null,
+                'is_completed' => false,
+            ]);
+            $task->tags()->sync($validated['tag_ids'] ?? []);
+        });
 
         return redirect()->route('tasks.index')->with('status', 'Task created successfully.');
     }
@@ -58,18 +88,27 @@ class TaskController extends Controller
     {
         $task = $this->ownedTask($task, 'update');
         $task->load('assignees:id,name');
+        $task->load('tags:id,name');
         $availableUsers = User::query()
             ->whereNotIn('id', $task->assignees->modelKeys())
             ->orderBy('name')
             ->get(['id', 'name']);
+        $availableTags = Tag::query()->orderBy('name')->get(['id', 'name']);
 
-        return view('tasks.edit', compact('task', 'availableUsers'));
+        return view('tasks.edit', compact('task', 'availableUsers', 'availableTags'));
     }
 
     public function update(UpdateTaskRequest $request, string $task): RedirectResponse
     {
         $task = $this->ownedTask($task, 'update');
-        $task->update(['title' => $request->validated('title')]);
+        $validated = $request->validated();
+        DB::transaction(function () use ($task, $request, $validated): void {
+            $task->update($request->safe()->only(['title', 'notes']));
+
+            if (array_key_exists('sync_tags', $validated)) {
+                $task->tags()->sync($validated['tag_ids'] ?? []);
+            }
+        });
 
         return redirect()->route('tasks.index')->with('status', 'Task updated successfully.');
     }
@@ -84,8 +123,17 @@ class TaskController extends Controller
 
     public function updateStatus(UpdateTaskStatusRequest $request, string $task): RedirectResponse
     {
-        $task = $this->ownedTask($task, 'updateStatus');
-        $task->update($request->validated());
+        $task = $this->accessibleTask($request->user(), $task);
+        Gate::authorize('updateStatus', $task);
+
+        $isCreator = (int) $task->user_id === (int) $request->user()->getKey();
+        $isCompleted = $request->boolean('is_completed');
+
+        abort_unless($isCreator || ($request->user()->isMember() && $isCompleted), 403);
+
+        $task->is_completed = $isCompleted;
+        $task->completed_by = $isCompleted ? $request->user()->getKey() : null;
+        $task->save();
 
         return redirect()->route('tasks.index')->with('status', 'Task status updated.');
     }
@@ -113,5 +161,19 @@ class TaskController extends Controller
         Gate::authorize($ability, $task);
 
         return $task;
+    }
+
+    private function accessibleTask(User $user, string $id): Task
+    {
+        return Task::query()
+            ->whereKey($id)
+            ->where(function ($query) use ($user): void {
+                $query->where('user_id', $user->getKey());
+
+                if ($user->isMember()) {
+                    $query->orWhereHas('assignees', fn ($assignees) => $assignees->whereKey($user->getKey()));
+                }
+            })
+            ->firstOrFail();
     }
 }

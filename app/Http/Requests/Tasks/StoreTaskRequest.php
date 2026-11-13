@@ -16,6 +16,10 @@ class StoreTaskRequest extends FormRequest
     {
         return [
             'title' => ['required', 'string', 'max:100'],
+            'notes' => ['nullable', 'string', 'max:5000'],
+            'tag_ids' => ['sometimes', 'array'],
+            'tag_ids.*' => ['required', 'integer', 'distinct', 'exists:tags,id'],
+            'sync_tags' => ['sometimes', 'accepted'],
         ];
     }
 }

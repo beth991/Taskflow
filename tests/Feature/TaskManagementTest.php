@@ -31,6 +31,39 @@ class TaskManagementTest extends TestCase
         $this->assertDatabaseMissing('tasks', ['user_id' => $otherUser->id, 'title' => 'Plan weekly review']);
     }
 
+    public function test_a_user_can_create_a_task_with_optional_notes(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->post(route('tasks.store'), [
+            'title' => 'Prepare deployment',
+            'notes' => 'Confirm the maintenance window with the team.',
+        ])->assertRedirect(route('tasks.index'));
+
+        $this->assertDatabaseHas('tasks', [
+            'user_id' => $user->id,
+            'title' => 'Prepare deployment',
+            'notes' => 'Confirm the maintenance window with the team.',
+        ]);
+    }
+
+    public function test_task_notes_are_optional_and_have_a_server_side_limit(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->post(route('tasks.store'), ['title' => 'No extra notes'])
+            ->assertRedirect(route('tasks.index'));
+
+        $this->assertDatabaseHas('tasks', ['title' => 'No extra notes', 'notes' => null]);
+
+        $this->from(route('tasks.create'))->post(route('tasks.store'), [
+            'title' => 'Too much text',
+            'notes' => str_repeat('n', 5001),
+        ])->assertRedirect(route('tasks.create'))->assertSessionHasErrors('notes');
+
+        $this->assertDatabaseMissing('tasks', ['title' => 'Too much text']);
+    }
+
     public function test_a_task_title_is_required(): void
     {
         $response = $this->actingAs(User::factory()->create())
@@ -148,6 +181,22 @@ class TaskManagementTest extends TestCase
             'user_id' => $user->id,
             'title' => 'Updated title',
             'is_completed' => true,
+        ]);
+    }
+
+    public function test_a_task_creator_can_update_task_notes(): void
+    {
+        $user = User::factory()->create();
+        $task = $this->createTask($user, 'Task with notes');
+
+        $this->actingAs($user)->put(route('tasks.update', $task), [
+            'title' => 'Task with notes',
+            'notes' => 'Bring the latest design draft.',
+        ])->assertRedirect(route('tasks.index'));
+
+        $this->assertDatabaseHas('tasks', [
+            'id' => $task->id,
+            'notes' => 'Bring the latest design draft.',
         ]);
     }
 

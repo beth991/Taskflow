@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
-#[Fillable(['title', 'is_completed'])]
+#[Fillable(['title', 'notes', 'is_completed'])]
 class Task extends Model
 {
     /**
@@ -21,6 +21,16 @@ class Task extends Model
     }
 
     /**
+     * Get the user who confirmed the task as complete.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function completedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'completed_by');
+    }
+
+    /**
      * Get the users assigned to the task.
      *
      * @return BelongsToMany<User, $this>
@@ -28,6 +38,16 @@ class Task extends Model
     public function assignees(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'task_user')->withTimestamps();
+    }
+
+    /**
+     * Get the tags associated with the task.
+     *
+     * @return BelongsToMany<Tag, $this>
+     */
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(Tag::class, 'tag_task')->withTimestamps();
     }
 
     /**

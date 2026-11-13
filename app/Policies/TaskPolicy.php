@@ -19,7 +19,8 @@ class TaskPolicy
 
     public function view(User $user, Task $task): bool
     {
-        return $this->owns($user, $task);
+        return $this->owns($user, $task)
+            || ($user->isMember() && $task->assignees()->whereKey($user->getKey())->exists());
     }
 
     public function update(User $user, Task $task): bool
@@ -29,7 +30,8 @@ class TaskPolicy
 
     public function updateStatus(User $user, Task $task): bool
     {
-        return $this->owns($user, $task);
+        return $this->owns($user, $task)
+            || ($user->isMember() && $task->assignees()->whereKey($user->getKey())->exists());
     }
 
     public function manageAssignees(User $user, Task $task): bool

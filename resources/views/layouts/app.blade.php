@@ -25,6 +25,10 @@
                         <a class="text-gray-300 transition hover:text-white" href="{{ route('tasks.index') }}">
                             {{ auth()->user()->isAdmin() ? 'My task workspace' : 'My tasks' }}
                         </a>
+                        @if (auth()->user()->isAdmin())
+                            <a class="text-gray-300 transition hover:text-white" href="{{ route('admin.users.index') }}">Manage users</a>
+                            <a class="text-gray-300 transition hover:text-white" href="{{ route('admin.tags.index') }}">Manage tags</a>
+                        @endif
                         <a class="rounded-lg bg-blue-500 px-3 py-2 font-medium text-white transition hover:bg-blue-400" href="{{ route('tasks.create') }}">New task</a>
                         <span class="hidden text-gray-500 sm:inline">{{ auth()->user()->name }}</span>
                         <form action="{{ route('logout') }}" method="POST">

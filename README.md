@@ -5,13 +5,15 @@ TaskFlow is a team task management application. It helps users create and track 
 ## Six required features
 
 1. Public registration, login, and logout. Public registration always creates a Member; users cannot select or submit their own role.
-2. A task list with all, completed, and incomplete filters.
-3. Task creation with a required title of at most 100 characters.
-4. Editing the title and completion status, and deleting tasks created by the signed-in user.
+2. A task list with all, completed, and incomplete filters, plus task detail pages.
+3. Task creation with a required title of at most 100 characters and optional task notes.
+4. Editing task title and notes, changing status, and deleting tasks created by the signed-in user.
 5. Adding and removing assignees on tasks created by the signed-in user.
 6. Role-specific Admin and Member dashboard content and navigation.
 
-Both roles can use these task features. **An Admin can only view and manage tasks that the Admin created**, just like a Member. A user's task list contains tasks created by that user; being an assignee does not grant task editing, deletion, or assignee-management permission.
+Both roles can use these task features. **An Admin can only view and manage tasks that the Admin created.** A Member's task list includes tasks the Member created and tasks assigned to them. Members can confirm assigned tasks as complete; Admin sees the confirming Member marked on the task detail page. Assignment does not grant permission to edit notes or details, reopen a completed task, delete it, or manage assignees.
+
+Task tags are an additional team feature: Admin manages the shared tag list, and Members can select existing tags on tasks they are allowed to create or edit.
 
 ## Technology
 
@@ -91,6 +93,8 @@ Run the dedicated seeder after configuring the variables for the Artisan process
 ```sh
 php artisan db:seed --class='Database\Seeders\TaskFlowAdminSeeder'
 ```
+
+After bootstrap, Admins can view accounts and change another user's role between Admin and Member at `/admin/users`. Admins cannot change their own role, and the application prevents a change that would leave no active Admin. If the database has no Admin account, provision the first one with the dedicated seeder before using Admin pages.
 
 If Laravel configuration is cached, ensure the seeder process loads the intended variables. After provisioning, remove the bootstrap password from the process environment, clear any config cache that may contain it, and rebuild the cache only from the sanitized runtime environment. Do not place the bootstrap password in a committed file or shell command history.
 

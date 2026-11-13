@@ -30,7 +30,9 @@ The same Laravel migration also defines `password_reset_tokens` (`email` primary
 | `id` | Unsigned bigint primary key | Task identifier. |
 | `user_id` | Foreign key to `users.id` | Creator of the task. |
 | `title` | String(100) | Required task title; request validation enforces the limit. |
+| `notes` | Nullable text | Optional task instructions or notes. |
 | `is_completed` | Boolean, default `false` | Completion state. |
+| `completed_by` | Nullable foreign key to `users.id` | User who most recently confirmed the task complete; set to null if that user is deleted. |
 | `created_at`, `updated_at` | Timestamps | Record timestamps. |
 
 Deleting a user who created tasks is restricted by the foreign key to preserve task ownership.
@@ -45,14 +47,34 @@ Deleting a user who created tasks is restricted by the foreign key to preserve t
 
 The composite primary key (`task_id`, `user_id`) prevents duplicate assignments. Both foreign keys cascade on deletion, removing pivot rows when a task or assigned user is deleted. This does not override the restrictive creator foreign key on `tasks.user_id`.
 
+### `tags`
+
+| Column | Definition | Purpose |
+| --- | --- | --- |
+| `id` | Unsigned bigint primary key | Tag identifier. |
+| `name` | Unique string(50) | Shared tag name managed by Admin. |
+| `created_at`, `updated_at` | Timestamps | Record timestamps. |
+
+### `tag_task`
+
+| Column | Definition | Purpose |
+| --- | --- | --- |
+| `task_id` | Foreign key to `tasks.id` | Task carrying the tag. |
+| `tag_id` | Foreign key to `tags.id` | Tag attached to the task. |
+| `created_at`, `updated_at` | Timestamps | Relation timestamps. |
+
+The composite primary key (`task_id`, `tag_id`) prevents duplicate tag assignments. Both foreign keys cascade on deletion, removing pivot records while preserving the other related records.
+
 ## Relationships
 
 - `Task::creator()` is `belongsTo(User::class, 'user_id')`.
 - `User::tasksCreated()` is `hasMany(Task::class, 'user_id')`.
 - `Task::assignees()` is `belongsToMany(User::class, 'task_user')->withTimestamps()`.
 - `User::assignedTasks()` is `belongsToMany(Task::class, 'task_user')->withTimestamps()`.
+- `Task::tags()` is `belongsToMany(Tag::class, 'tag_task')->withTimestamps()`.
+- `Tag::tasks()` is `belongsToMany(Task::class, 'tag_task')->withTimestamps()`.
 
-The task list in the current application queries `tasksCreated()`. Being an assignee does not itself grant permission to view or manage another user's task.
+The Admin task list is scoped to `tasksCreated()`. A Member task list includes tasks created by that Member and tasks linked through `assignedTasks()`. Assignees can mark their assigned task complete; editing its details and other management actions remain restricted to the creator. The `completed_by` field records the user who most recently marked the task complete and is cleared when the creator reopens it.
 
 ## Laravel support tables
 

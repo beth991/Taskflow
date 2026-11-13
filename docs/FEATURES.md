@@ -13,21 +13,23 @@ This document describes the six required features that are implemented in the cu
 
 ## 2. Task list and status filters
 
-- Authenticated users can view their created tasks at `/tasks`.
+- Authenticated users can view tasks at `/tasks`. Admin sees tasks they created; Member sees tasks they created and tasks assigned to them.
 - Filters are `all`, `completed`, and `incomplete`; invalid filter values fail validation.
-- Each entry shows title, completion state, creation time, and assignee names. The list is paginated at 10 tasks per page.
-- The list is scoped to tasks created by the signed-in user. Assignee membership alone does not expose another user's task in this list.
+- Each entry shows title, completion state, creation time, and assignee names. The list is paginated at 10 tasks per page. Selecting a task title opens its detail page.
+- Assigned Members can confirm a task as complete; the task then displays the `Completed` label to users who can view it. The detail page marks the Member who most recently confirmed completion, and only Admin sees that marker and confirmer identity. Assignees cannot reopen completed tasks.
 
 ## 3. Create a task
 
 - Authenticated users can create tasks from `/tasks/create`.
 - The title is required and limited to 100 characters on the server.
+- Optional notes can be added and edited by the task creator; notes are limited to 5,000 characters and displayed to the creator and assignees.
 - The authenticated user is set as creator by the Eloquent relationship; request fields cannot select a different creator.
 - New tasks start incomplete.
 
 ## 4. Edit, status, and delete
 
-- A task creator can edit the task title, change its completed/incomplete status, or delete it.
+- A task creator can edit the task title and notes, change its completed/incomplete status, or delete it.
+- A Member assigned to a task can confirm it as complete. An assignee cannot edit task details or reopen a completed task.
 - Title validation is the same for create and edit: required, string, maximum 100 characters.
 - The status endpoint validates only `is_completed`; extra request fields are not used to update the task.
 - Tasks belonging to another user are scoped out and return not found for edit, update, status, and delete attempts.
@@ -43,8 +45,23 @@ This document describes the six required features that are implemented in the cu
 
 - The shared layout displays an Admin or Member badge and role-specific navigation labels.
 - The dashboard content and task links differ between Admin and Member while using the same visual design and task actions.
-- Both roles use the same creator-only task scope. Admin can manage only tasks the Admin created; there is no role-based global task management.
+- Admin sees and manages only tasks the Admin created; there is no role-based global task management. Members can see tasks assigned to them and confirm them as complete, but can otherwise manage only tasks they created.
 - Guests are redirected to login before accessing the dashboard or task routes.
+
+## 7. Shared task tags
+
+- Admin can list, create, edit, and delete shared tags from `/admin/tags`.
+- Tag names are required, unique, and limited to 50 characters.
+- Members cannot manage the shared tag list. They can select existing tags when creating or editing tasks they own.
+- Task tag selection is validated against existing tag IDs, rejects duplicates, and synchronizes the many-to-many relation.
+- Deleting a tag removes its pivot records without deleting tasks.
+
+## 8. Admin user management
+
+- Admin can view the paginated user list at `/admin/users` and change another user's role between Admin and Member.
+- Public registration remains Member-only; role changes use a separate Admin-only PATCH endpoint.
+- Admin cannot change their own role, and a role change cannot leave the application without an active Admin.
+- The role update accepts only the `admin` and `member` enum values and changes no other user attributes.
 
 ## Short usage flow
 
@@ -62,7 +79,11 @@ This document describes the six required features that are implemented in the cu
 | GET | `/dashboard` | `dashboard` | Authenticated |
 | POST | `/logout` | `logout` | Authenticated |
 | GET | `/tasks` | `tasks.index` | Authenticated; own created tasks |
+| GET | `/tasks/{task}` | `tasks.show` | Authenticated; creator or assigned Member |
 | GET / POST | `/tasks/create`, `/tasks` | `tasks.create`, `tasks.store` | Authenticated |
 | GET / PUT / DELETE | `/tasks/{task}/edit`, `/tasks/{task}` | `tasks.edit`, `tasks.update`, `tasks.destroy` | Authenticated; creator only |
-| PATCH | `/tasks/{task}/status` | `tasks.status.update` | Authenticated; creator only |
+| PATCH | `/tasks/{task}/status` | `tasks.status.update` | Authenticated; creator may toggle, assigned Member may mark complete |
 | POST / DELETE | `/tasks/{task}/assignees` | `tasks.assignees.store`, `tasks.assignees.destroy` | Authenticated; creator only |
+| GET / POST | `/admin/tags` | `admin.tags.index`, `admin.tags.store` | Authenticated Admin only |
+| GET / POST | `/admin/tags/create` | `admin.tags.create` | Authenticated Admin only |
+| GET / PUT / DELETE | `/admin/tags/{tag}/edit`, `/admin/tags/{tag}` | `admin.tags.edit`, `admin.tags.update`, `admin.tags.destroy` | Authenticated Admin only |
