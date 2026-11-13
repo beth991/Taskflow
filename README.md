@@ -15,7 +15,7 @@ TaskFlow is a team task management application under active development. Its goa
 
 The authentication milestone is implemented: users can register, log in, and log out. Registration validates the submitted profile and a password between 8 and 72 bytes, ignores any submitted role, and stores passwords using Laravel's hashed password cast.
 
-The database and Eloquent relationship milestone is implemented, including tasks and task assignees. Task creation screens, CRUD, filters, assignee management UI, role administration, and role-specific dashboards remain planned milestones. See [feature progress](docs/FEATURES.md).
+The database/model and personal task management milestones are implemented. Authenticated users can create, list, edit, delete, and update the status of their own tasks, with all/completed/incomplete filters. Assignee management, role administration, and role-specific dashboards remain planned milestones. See [feature progress](docs/FEATURES.md).
 
 ## Database schema
 
@@ -83,7 +83,11 @@ For frontend development with hot reload, run `npm run dev` in a separate termin
 
 ## Authentication
 
-Visit `/register` to create an account, `/login` to sign in, and use the navigation's **Log out** action to sign out. The authenticated `/dashboard` page is currently a milestone placeholder while task features are developed.
+Visit `/register` to create an account, `/login` to sign in, and use the navigation's **Log out** action to sign out. The authenticated `/dashboard` page remains a placeholder until role-specific dashboards are implemented.
+
+## Task management
+
+After signing in, visit `/tasks` to view your tasks, filter by completion status, create a task, edit its title, change its completion status, or delete it. Titles are required and limited to 100 characters. Each task is scoped to its creator; other users' tasks are not shown or available through task routes.
 
 ## Testing and code style
 

@@ -19,9 +19,17 @@ This document records implemented behavior only. Planned work is labeled clearly
 - Task creator deletion is restricted while created tasks exist; task/user deletion cascades only to dependent pivot records.
 - `Task::creator()` / `User::tasksCreated()` represent ownership; `Task::assignees()` / `User::assignedTasks()` represent assignment.
 
+## Personal task management — implemented
+
+- Authenticated users can list, create, edit, and delete only tasks they created.
+- Task titles are required and limited to 100 characters on create and update requests.
+- New tasks are created through the authenticated user's `tasksCreated()` relation and start incomplete.
+- The task list shows title, completion status, and creation time, with all/completed/incomplete filters and pagination.
+- Task status can be updated through a dedicated endpoint that accepts only `is_completed`.
+- Foreign task IDs are scoped out and return not found; policies also authorize task operations.
+
 ## Planned milestones
 
-- Task listing, status filters, and task create/edit/delete operations.
 - Assignee management screens and operations.
 - Admin/Member roles, policies, and role-specific access rules.
 - Full role-specific dashboard and navigation.
@@ -36,3 +44,10 @@ This document records implemented behavior only. Planned work is labeled clearly
 | POST | `/login` | `login.store` | Guest, rate limited |
 | GET | `/dashboard` | `dashboard` | Authenticated |
 | POST | `/logout` | `logout` | Authenticated |
+| GET | `/tasks` | `tasks.index` | Authenticated; own tasks only |
+| GET | `/tasks/create` | `tasks.create` | Authenticated |
+| POST | `/tasks` | `tasks.store` | Authenticated |
+| GET | `/tasks/{task}/edit` | `tasks.edit` | Authenticated; own task only |
+| PUT | `/tasks/{task}` | `tasks.update` | Authenticated; own task only |
+| DELETE | `/tasks/{task}` | `tasks.destroy` | Authenticated; own task only |
+| PATCH | `/tasks/{task}/status` | `tasks.status.update` | Authenticated; own task only |

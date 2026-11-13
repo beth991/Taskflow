@@ -24,7 +24,16 @@ Feature tests use the SQLite in-memory connection configured in `phpunit.xml`, s
 - Logout.
 - Authentication required for the dashboard.
 
-Task CRUD, status filters, assignee behavior, and role authorization tests are planned alongside their respective implementation milestones.
+`tests/Feature/TaskManagementTest.php` covers:
+
+- Creating tasks, assigning the creator from the authenticated user, and defaulting status to incomplete.
+- Required title validation and accepted 99/100-character titles; 101 characters are rejected at request time.
+- Listing only the current user's tasks and rejecting access, update, or delete attempts for another user's task.
+- Updating titles without changing the creator or completion status, and deleting a task with its pivot rows.
+- Toggling status while ignoring extra fields, and filtering all/completed/incomplete tasks.
+- Rejecting invalid filter values and requiring authentication on task routes.
+
+Assignee management workflows and role-based authorization tests are planned for later milestones.
 
 `tests/Feature/TaskModelTest.php` covers task creation, creator and assignee relationships, multiple tasks/assignees, pivot timestamps, duplicate prevention, foreign-key integrity and delete behavior, the incomplete default, and the 100-character title declaration. SQLite does not enforce `VARCHAR(n)` lengths, so the title-limit test verifies the migration's `VARCHAR(100)` declaration while also storing a 100-character title. MySQL column enforcement is not exercised by the suite.
 

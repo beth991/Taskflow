@@ -17,6 +17,8 @@
                 <div class="flex items-center gap-3 text-sm">
                     @auth
                         <a class="text-gray-300 transition hover:text-white" href="{{ route('dashboard') }}">Dashboard</a>
+                        <a class="text-gray-300 transition hover:text-white" href="{{ route('tasks.index') }}">Tasks</a>
+                        <a class="rounded-lg bg-blue-500 px-3 py-2 font-medium text-white transition hover:bg-blue-400" href="{{ route('tasks.create') }}">New task</a>
                         <span class="hidden text-gray-500 sm:inline">{{ auth()->user()->name }}</span>
                         <form action="{{ route('logout') }}" method="POST">
                             @csrf
