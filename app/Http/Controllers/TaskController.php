@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Tasks\RemoveTaskAssigneeRequest;
+use App\Http\Requests\Tasks\StoreTaskAssigneesRequest;
 use App\Http\Requests\Tasks\StoreTaskRequest;
 use App\Http\Requests\Tasks\TaskIndexRequest;
 use App\Http\Requests\Tasks\UpdateTaskRequest;
 use App\Http\Requests\Tasks\UpdateTaskStatusRequest;
 use App\Models\Task;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
@@ -18,7 +21,7 @@ class TaskController extends Controller
         Gate::authorize('viewAny', Task::class);
 
         $filter = $request->validated('filter', 'all');
-        $tasks = $request->user()->tasksCreated()->latest();
+        $tasks = $request->user()->tasksCreated()->with('assignees:id,name')->latest();
 
         if ($filter === 'completed') {
             $tasks->where('is_completed', true);
@@ -54,8 +57,13 @@ class TaskController extends Controller
     public function edit(string $task): View
     {
         $task = $this->ownedTask($task, 'update');
+        $task->load('assignees:id,name');
+        $availableUsers = User::query()
+            ->whereNotIn('id', $task->assignees->modelKeys())
+            ->orderBy('name')
+            ->get(['id', 'name']);
 
-        return view('tasks.edit', compact('task'));
+        return view('tasks.edit', compact('task', 'availableUsers'));
     }
 
     public function update(UpdateTaskRequest $request, string $task): RedirectResponse
@@ -80,6 +88,22 @@ class TaskController extends Controller
         $task->update($request->validated());
 
         return redirect()->route('tasks.index')->with('status', 'Task status updated.');
+    }
+
+    public function storeAssignees(StoreTaskAssigneesRequest $request, string $task): RedirectResponse
+    {
+        $task = $this->ownedTask($task, 'manageAssignees');
+        $task->assignees()->syncWithoutDetaching($request->validated('user_ids'));
+
+        return redirect()->route('tasks.edit', $task)->with('status', 'Assignees added successfully.');
+    }
+
+    public function destroyAssignee(RemoveTaskAssigneeRequest $request, string $task): RedirectResponse
+    {
+        $task = $this->ownedTask($task, 'manageAssignees');
+        $task->assignees()->detach($request->validated('user_id'));
+
+        return redirect()->route('tasks.edit', $task)->with('status', 'Assignee removed successfully.');
     }
 
     private function ownedTask(string $id, string $ability): Task

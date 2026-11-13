@@ -15,7 +15,7 @@ TaskFlow is a team task management application under active development. Its goa
 
 The authentication milestone is implemented: users can register, log in, and log out. Registration validates the submitted profile and a password between 8 and 72 bytes, ignores any submitted role, and stores passwords using Laravel's hashed password cast.
 
-The database/model and personal task management milestones are implemented. Authenticated users can create, list, edit, delete, and update the status of their own tasks, with all/completed/incomplete filters. Assignee management, role administration, and role-specific dashboards remain planned milestones. See [feature progress](docs/FEATURES.md).
+The database/model, personal task management, and assignee management milestones are implemented. Authenticated users can create, list, edit, delete, and update the status of their own tasks, with all/completed/incomplete filters. Task owners can add and remove existing users as assignees. Admin/Member role administration and role-specific dashboards remain planned milestones. See [feature progress](docs/FEATURES.md).
 
 ## Database schema
 
@@ -87,7 +87,7 @@ Visit `/register` to create an account, `/login` to sign in, and use the navigat
 
 ## Task management
 
-After signing in, visit `/tasks` to view your tasks, filter by completion status, create a task, edit its title, change its completion status, or delete it. Titles are required and limited to 100 characters. Each task is scoped to its creator; other users' tasks are not shown or available through task routes.
+After signing in, visit `/tasks` to view your tasks, filter by completion status, create a task, edit its title, change its completion status, or delete it. On a task's edit page, its owner can add one or more existing users as assignees or remove current assignees. Titles are required and limited to 100 characters. Each task is scoped to its creator; other users' tasks are not shown or available through task routes, including assignee management endpoints.
 
 ## Testing and code style
 

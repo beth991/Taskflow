@@ -53,6 +53,14 @@
                                 </span>
                                 <time class="text-gray-500" datetime="{{ $task->created_at->toIso8601String() }}">Created {{ $task->created_at->format('M j, Y · H:i') }}</time>
                             </div>
+                            <div class="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                                <span class="text-gray-500">Assignees:</span>
+                                @forelse ($task->assignees as $assignee)
+                                    <span class="rounded-full border border-[#3A3A3A] px-2.5 py-1 text-xs text-gray-300">{{ $assignee->name }}</span>
+                                @empty
+                                    <span class="text-gray-500">None</span>
+                                @endforelse
+                            </div>
                         </div>
 
                         <div class="flex flex-wrap items-center gap-2 sm:justify-end">

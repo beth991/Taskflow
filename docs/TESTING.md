@@ -33,7 +33,16 @@ Feature tests use the SQLite in-memory connection configured in `phpunit.xml`, s
 - Toggling status while ignoring extra fields, and filtering all/completed/incomplete tasks.
 - Rejecting invalid filter values and requiring authentication on task routes.
 
-Assignee management workflows and role-based authorization tests are planned for later milestones.
+`tests/Feature/TaskAssigneeManagementTest.php` covers:
+
+- Adding one or multiple assignees and preserving pivot timestamps.
+- Removing an assignee.
+- Rejecting unknown user IDs and duplicate IDs in one request without changing assignments.
+- Preventing duplicate pivot rows when an existing assignee is submitted again.
+- Returning 404 and preserving assignments when another user attempts to add or remove assignees.
+- Displaying assignees on the task list and edit page.
+
+Role-based authorization tests remain planned for a later milestone.
 
 `tests/Feature/TaskModelTest.php` covers task creation, creator and assignee relationships, multiple tasks/assignees, pivot timestamps, duplicate prevention, foreign-key integrity and delete behavior, the incomplete default, and the 100-character title declaration. SQLite does not enforce `VARCHAR(n)` lengths, so the title-limit test verifies the migration's `VARCHAR(100)` declaration while also storing a 100-character title. MySQL column enforcement is not exercised by the suite.
 

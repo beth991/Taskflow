@@ -28,9 +28,16 @@ This document records implemented behavior only. Planned work is labeled clearly
 - Task status can be updated through a dedicated endpoint that accepts only `is_completed`.
 - Foreign task IDs are scoped out and return not found; policies also authorize task operations.
 
+## Assignee management — implemented
+
+- Task owners can add one or more existing users as assignees and remove current assignees.
+- Assignee changes are validated and authorized by the `manageAssignees` TaskPolicy ability; task IDs are resolved through the authenticated owner's created-task relation and foreign task IDs return not found.
+- Duplicate IDs in a request are rejected, while adding an already assigned user is idempotent and does not create duplicate pivot rows.
+- The task list and edit page display assignees; the edit page provides add and remove forms.
+- Existing `task_user` foreign keys, composite primary key, and pivot timestamps are reused; no migration was added.
+
 ## Planned milestones
 
-- Assignee management screens and operations.
 - Admin/Member roles, policies, and role-specific access rules.
 - Full role-specific dashboard and navigation.
 
@@ -51,3 +58,5 @@ This document records implemented behavior only. Planned work is labeled clearly
 | PUT | `/tasks/{task}` | `tasks.update` | Authenticated; own task only |
 | DELETE | `/tasks/{task}` | `tasks.destroy` | Authenticated; own task only |
 | PATCH | `/tasks/{task}/status` | `tasks.status.update` | Authenticated; own task only |
+| POST | `/tasks/{task}/assignees` | `tasks.assignees.store` | Authenticated; own task only |
+| DELETE | `/tasks/{task}/assignees` | `tasks.assignees.destroy` | Authenticated; own task only |

@@ -32,6 +32,11 @@ class TaskPolicy
         return $this->owns($user, $task);
     }
 
+    public function manageAssignees(User $user, Task $task): bool
+    {
+        return $this->owns($user, $task);
+    }
+
     public function delete(User $user, Task $task): bool
     {
         return $this->owns($user, $task);

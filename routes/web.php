@@ -23,6 +23,8 @@ Route::middleware('auth')->group(function (): void {
     Route::view('/dashboard', 'dashboard')->name('dashboard');
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 
+    Route::post('/tasks/{task}/assignees', [TaskController::class, 'storeAssignees'])->name('tasks.assignees.store');
+    Route::delete('/tasks/{task}/assignees', [TaskController::class, 'destroyAssignee'])->name('tasks.assignees.destroy');
     Route::patch('/tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.status.update');
     Route::resource('tasks', TaskController::class)->except(['show']);
 });
