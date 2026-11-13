@@ -1,70 +1,68 @@
-# TaskFlow Feature Progress
+# TaskFlow Features
 
-This document records implemented behavior only. Planned work is labeled clearly and is not represented as available functionality.
+This document describes the six required features that are implemented in the current project. The role frontend changes presentation only; Admin does not receive cross-owner task permissions.
 
-## Authentication — implemented
+## 1. Registration and authentication
 
-- Guest registration with name, unique email, password length, and confirmation validation.
-- Registration passwords must be 8–72 bytes to match the default bcrypt input limit.
-- New users receive the `member` role by database default; submitted role fields are not accepted when creating an account, and role is excluded from mass assignment.
-- Passwords are hashed by the `User` model's Laravel `hashed` cast.
-- Login uses Laravel's session guard, session ID regeneration, and a route-level attempt limit.
-- Logout clears the authenticated session and regenerates its CSRF token.
-- The dashboard route requires authentication.
+- Guests can register at `/register`, log in at `/login`, and authenticated users can log out.
+- Name and email are required; email must be unique. Password is required, confirmed, at least 8 characters, and at most 72 bytes.
+- Login and registration POST routes are rate-limited. Successful registration and login regenerate the session; logout invalidates the session and regenerates the CSRF token.
+- Passwords are stored using Laravel's `hashed` cast.
+- Public registration uses only the validated name, email, and password. The `role` input is ignored, and the database default assigns `member`.
+- Admin provisioning is restricted to the dedicated `TaskFlowAdminSeeder`; see [Roles and permissions](ROLES-AND-PERMISSIONS.md).
 
-## Role storage and Admin provisioning — implemented (Milestone 5.1)
+## 2. Task list and status filters
 
-- An additive migration adds an indexed `users.role` string with the `member` default, including for existing accounts when applied; the User model casts it to a backed enum limited to `admin` and `member`.
-- `User::isAdmin()` and `User::isMember()` provide role checks.
-- `TaskFlowAdminSeeder` creates the first Admin from Laravel configuration, does not print the password, is idempotent for that Admin, and stops without changes if a Member owns the email or another Admin already exists.
-- Role-based task authorization, role-specific dashboards, and deadlines are not implemented in this milestone.
+- Authenticated users can view their created tasks at `/tasks`.
+- Filters are `all`, `completed`, and `incomplete`; invalid filter values fail validation.
+- Each entry shows title, completion state, creation time, and assignee names. The list is paginated at 10 tasks per page.
+- The list is scoped to tasks created by the signed-in user. Assignee membership alone does not expose another user's task in this list.
 
-## Database and Eloquent relationships — implemented
+## 3. Create a task
 
-- `tasks` stores creator, a `VARCHAR(100)` title, completion state (default `false`), and timestamps.
-- `task_user` connects tasks and assignees with timestamps and a composite primary key on (`task_id`, `user_id`).
-- Task creator deletion is restricted while created tasks exist; task/user deletion cascades only to dependent pivot records.
-- `Task::creator()` / `User::tasksCreated()` represent ownership; `Task::assignees()` / `User::assignedTasks()` represent assignment.
+- Authenticated users can create tasks from `/tasks/create`.
+- The title is required and limited to 100 characters on the server.
+- The authenticated user is set as creator by the Eloquent relationship; request fields cannot select a different creator.
+- New tasks start incomplete.
 
-## Personal task management — implemented
+## 4. Edit, status, and delete
 
-- Authenticated users can list, create, edit, and delete only tasks they created.
-- Task titles are required and limited to 100 characters on create and update requests.
-- New tasks are created through the authenticated user's `tasksCreated()` relation and start incomplete.
-- The task list shows title, completion status, and creation time, with all/completed/incomplete filters and pagination.
-- Task status can be updated through a dedicated endpoint that accepts only `is_completed`.
-- Foreign task IDs are scoped out and return not found; policies also authorize task operations.
+- A task creator can edit the task title, change its completed/incomplete status, or delete it.
+- Title validation is the same for create and edit: required, string, maximum 100 characters.
+- The status endpoint validates only `is_completed`; extra request fields are not used to update the task.
+- Tasks belonging to another user are scoped out and return not found for edit, update, status, and delete attempts.
 
-## Assignee management — implemented
+## 5. Assignee management
 
-- Task owners can add one or more existing users as assignees and remove current assignees.
-- Assignee changes are validated and authorized by the `manageAssignees` TaskPolicy ability; task IDs are resolved through the authenticated owner's created-task relation and foreign task IDs return not found.
-- Duplicate IDs in a request are rejected, while adding an already assigned user is idempotent and does not create duplicate pivot rows.
-- The task list and edit page display assignees; the edit page provides add and remove forms.
-- Existing `task_user` foreign keys, composite primary key, and pivot timestamps are reused; no migration was added.
+- A task creator can add one or more existing users as assignees from the task edit page and remove current assignees.
+- User IDs must exist; duplicate IDs in one request are rejected. Re-adding an existing assignee does not create a duplicate pivot record.
+- Assignee names are shown on the task list and edit page. Email addresses are not shown by this feature.
+- Only a task creator can manage its assignees. CSRF protection is enabled on state-changing forms.
 
-## Planned milestones
+## 6. Role-specific frontend
 
-- Admin/Member task authorization and role-specific access rules.
-- Full role-specific dashboard and navigation.
-- Deadline storage, authorization, and status categories.
+- The shared layout displays an Admin or Member badge and role-specific navigation labels.
+- The dashboard content and task links differ between Admin and Member while using the same visual design and task actions.
+- Both roles use the same creator-only task scope. Admin can manage only tasks the Admin created; there is no role-based global task management.
+- Guests are redirected to login before accessing the dashboard or task routes.
 
-## Current routes
+## Short usage flow
+
+1. Register a Member or log in to an existing account.
+2. Open the dashboard, then create a task or visit the task list.
+3. Filter tasks by completion status; edit a task to manage its title and assignees.
+4. Use the task row action to change completion state or delete a task.
+
+## Route summary
 
 | Method | URI | Name | Access |
 | --- | --- | --- | --- |
-| GET | `/register` | `register` | Guest |
-| POST | `/register` | `register.store` | Guest, rate limited |
-| GET | `/login` | `login` | Guest |
-| POST | `/login` | `login.store` | Guest, rate limited |
+| GET / POST | `/register` | `register`, `register.store` | Guest; POST rate-limited |
+| GET / POST | `/login` | `login`, `login.store` | Guest; POST rate-limited |
 | GET | `/dashboard` | `dashboard` | Authenticated |
 | POST | `/logout` | `logout` | Authenticated |
-| GET | `/tasks` | `tasks.index` | Authenticated; own tasks only |
-| GET | `/tasks/create` | `tasks.create` | Authenticated |
-| POST | `/tasks` | `tasks.store` | Authenticated |
-| GET | `/tasks/{task}/edit` | `tasks.edit` | Authenticated; own task only |
-| PUT | `/tasks/{task}` | `tasks.update` | Authenticated; own task only |
-| DELETE | `/tasks/{task}` | `tasks.destroy` | Authenticated; own task only |
-| PATCH | `/tasks/{task}/status` | `tasks.status.update` | Authenticated; own task only |
-| POST | `/tasks/{task}/assignees` | `tasks.assignees.store` | Authenticated; own task only |
-| DELETE | `/tasks/{task}/assignees` | `tasks.assignees.destroy` | Authenticated; own task only |
+| GET | `/tasks` | `tasks.index` | Authenticated; own created tasks |
+| GET / POST | `/tasks/create`, `/tasks` | `tasks.create`, `tasks.store` | Authenticated |
+| GET / PUT / DELETE | `/tasks/{task}/edit`, `/tasks/{task}` | `tasks.edit`, `tasks.update`, `tasks.destroy` | Authenticated; creator only |
+| PATCH | `/tasks/{task}/status` | `tasks.status.update` | Authenticated; creator only |
+| POST / DELETE | `/tasks/{task}/assignees` | `tasks.assignees.store`, `tasks.assignees.destroy` | Authenticated; creator only |
