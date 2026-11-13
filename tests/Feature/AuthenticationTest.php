@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
@@ -24,7 +25,6 @@ class AuthenticationTest extends TestCase
             'email' => 'taylor@example.test',
             'password' => 'correct-horse-battery',
             'password_confirmation' => 'correct-horse-battery',
-            'role' => 'admin',
         ]);
 
         $user = User::where('email', 'taylor@example.test')->firstOrFail();
@@ -33,8 +33,26 @@ class AuthenticationTest extends TestCase
         $this->assertAuthenticatedAs($user);
         $this->assertTrue(Hash::check('correct-horse-battery', $user->password));
         $this->assertNotSame('correct-horse-battery', $user->password);
-        $this->assertArrayNotHasKey('role', $user->getAttributes());
+        $this->assertSame(UserRole::Member, $user->role);
+        $this->assertTrue($user->isMember());
         $this->assertNotSame($previousSessionId, app('session')->driver()->getId());
+    }
+
+    public function test_public_registration_cannot_assign_the_admin_role(): void
+    {
+        $response = $this->post(route('register.store'), [
+            'name' => 'Taylor Member',
+            'email' => 'taylor@example.test',
+            'password' => 'correct-horse-battery',
+            'password_confirmation' => 'correct-horse-battery',
+            'role' => User::ROLE_ADMIN,
+        ]);
+
+        $user = User::where('email', 'taylor@example.test')->firstOrFail();
+
+        $response->assertRedirect(route('dashboard'));
+        $this->assertSame(UserRole::Member, $user->role);
+        $this->assertFalse($user->isAdmin());
     }
 
     public function test_registration_validates_required_fields_and_password_confirmation(): void

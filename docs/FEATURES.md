@@ -6,11 +6,18 @@ This document records implemented behavior only. Planned work is labeled clearly
 
 - Guest registration with name, unique email, password length, and confirmation validation.
 - Registration passwords must be 8–72 bytes to match the default bcrypt input limit.
-- Submitted role fields are not accepted when creating an account.
+- New users receive the `member` role by database default; submitted role fields are not accepted when creating an account, and role is excluded from mass assignment.
 - Passwords are hashed by the `User` model's Laravel `hashed` cast.
 - Login uses Laravel's session guard, session ID regeneration, and a route-level attempt limit.
 - Logout clears the authenticated session and regenerates its CSRF token.
 - The dashboard route requires authentication.
+
+## Role storage and Admin provisioning — implemented (Milestone 5.1)
+
+- An additive migration adds an indexed `users.role` string with the `member` default, including for existing accounts when applied; the User model casts it to a backed enum limited to `admin` and `member`.
+- `User::isAdmin()` and `User::isMember()` provide role checks.
+- `TaskFlowAdminSeeder` creates the first Admin from Laravel configuration, does not print the password, is idempotent for that Admin, and stops without changes if a Member owns the email or another Admin already exists.
+- Role-based task authorization, role-specific dashboards, and deadlines are not implemented in this milestone.
 
 ## Database and Eloquent relationships — implemented
 
@@ -38,8 +45,9 @@ This document records implemented behavior only. Planned work is labeled clearly
 
 ## Planned milestones
 
-- Admin/Member roles, policies, and role-specific access rules.
+- Admin/Member task authorization and role-specific access rules.
 - Full role-specific dashboard and navigation.
+- Deadline storage, authorization, and status categories.
 
 ## Current routes
 

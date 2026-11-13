@@ -15,7 +15,7 @@ Feature tests use the SQLite in-memory connection configured in `phpunit.xml`, s
 `tests/Feature/AuthenticationTest.php` covers:
 
 - Successful registration and automatic sign-in.
-- Password hashing and ignoring a submitted role value.
+- Password hashing, default Member assignment, and rejecting a submitted Admin role.
 - Passwords at 72 bytes register and log in; longer passwords fail validation.
 - Registration validation failures.
 - Successful login and invalid credentials.
@@ -43,6 +43,14 @@ Feature tests use the SQLite in-memory connection configured in `phpunit.xml`, s
 - Displaying assignees on the task list and edit page.
 
 Role-based authorization tests remain planned for a later milestone.
+
+`tests/Feature/UserRoleMigrationTest.php` covers an existing user receiving the Member default when the additive role migration is applied in SQLite memory.
+
+`tests/Feature/TaskFlowAdminSeederTest.php` covers Admin creation, safe repeated execution, password output redaction, and refusing to promote an existing Member.
+
+`tests/Feature/MySqlAdvisoryLockTest.php` covers successful named-lock acquisition, timeout and invalid acquisition results, and lock release after successful or failed provisioning callbacks. These tests mock the database connection; they verify lock-handling control flow, not MySQL's cross-process locking behavior. `phpunit.xml` uses SQLite in-memory, so a MySQL integration test remains to be run against a dedicated MySQL 8.4 test database: start two independent provisioning processes concurrently with different configured Admin emails, then verify exactly one Admin exists and the other process exits with the existing-Admin conflict. Do not use a production database for this check.
+
+`tests/Feature/DatabaseSeederTest.php` verifies the test account is created in local/testing and not in production. `tests/Feature/UserRoleValidationTest.php` verifies only the Admin and Member role enum values can be assigned.
 
 `tests/Feature/TaskModelTest.php` covers task creation, creator and assignee relationships, multiple tasks/assignees, pivot timestamps, duplicate prevention, foreign-key integrity and delete behavior, the incomplete default, and the 100-character title declaration. SQLite does not enforce `VARCHAR(n)` lengths, so the title-limit test verifies the migration's `VARCHAR(100)` declaration while also storing a 100-character title. MySQL column enforcement is not exercised by the suite.
 
