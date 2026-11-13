@@ -11,7 +11,7 @@ TaskFlow is a team task management application. It helps users create and track 
 5. Adding and removing assignees on tasks created by the signed-in user.
 6. Role-specific Admin and Member dashboard content and navigation.
 
-Both roles can use these task features. **An Admin can only view and manage tasks that the Admin created.** A Member's task list includes tasks the Member created and tasks assigned to them. Members can confirm assigned tasks as complete; Admin sees the confirming Member marked on the task detail page. Assignment does not grant permission to edit notes or details, reopen a completed task, delete it, or manage assignees.
+Admin can view all tasks and details, including Member-created tasks, but can edit, delete, change status, and manage assignees only on tasks created by that Admin. A Member's task list includes tasks the Member created and tasks assigned to them. Members can confirm assigned tasks as complete; Admin sees the confirming Member marked on the task detail page. Assignment does not grant permission to edit notes or details, reopen a completed task, delete it, or manage assignees.
 
 Task tags are an additional team feature: Admin manages the shared tag list, and Members can select existing tags on tasks they are allowed to create or edit.
 

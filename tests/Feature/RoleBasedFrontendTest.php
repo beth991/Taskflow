@@ -21,8 +21,8 @@ class RoleBasedFrontendTest extends TestCase
             ->assertOk()
             ->assertSee('Admin workspace')
             ->assertSee('Admin dashboard')
-            ->assertSee('My task workspace')
-            ->assertSee('Open my task workspace')
+            ->assertSee('Task workspace')
+            ->assertSee('Open task workspace')
             ->assertSee('Manage users')
             ->assertDontSee('Member workspace');
     }
@@ -42,26 +42,68 @@ class RoleBasedFrontendTest extends TestCase
             ->assertDontSee('Admin workspace');
     }
 
-    public function test_admin_uses_task_features_without_access_to_another_users_task(): void
+    public function test_admin_can_view_all_tasks_but_cannot_manage_another_users_task(): void
     {
         $admin = $this->createAdmin();
         $member = User::factory()->create()->fresh();
         $adminTask = $admin->tasksCreated()->create(['title' => 'Admin owned task']);
         $memberTask = $member->tasksCreated()->create(['title' => 'Member private task']);
-        $memberTask->assignees()->attach($admin);
 
         $this->actingAs($admin)
             ->get(route('tasks.index'))
             ->assertOk()
             ->assertSee('Admin owned task')
-            ->assertDontSee('Member private task');
+            ->assertSee('Member private task')
+            ->assertSee('Created by '.$member->name)
+            ->assertSee('View only · created by '.$member->name);
+
+        $this->get(route('tasks.show', $memberTask))
+            ->assertOk()
+            ->assertSee('Member private task')
+            ->assertSee('Created by')
+            ->assertSee($member->name);
 
         $this->get(route('tasks.edit', $memberTask))->assertNotFound();
         $this->put(route('tasks.update', $memberTask), ['title' => 'Changed by Admin'])->assertNotFound();
         $this->delete(route('tasks.destroy', $memberTask))->assertNotFound();
+        $this->patch(route('tasks.status.update', $memberTask), ['is_completed' => true])->assertForbidden();
+        $this->post(route('tasks.assignees.store', $memberTask), ['user_ids' => [$admin->id]])->assertNotFound();
 
         $this->assertDatabaseHas('tasks', ['id' => $memberTask->id, 'title' => 'Member private task']);
         $this->assertDatabaseHas('tasks', ['id' => $adminTask->id, 'title' => 'Admin owned task']);
+    }
+
+    public function test_admin_can_view_all_status_filters_without_changing_member_visibility(): void
+    {
+        $admin = $this->createAdmin();
+        $member = User::factory()->create();
+        $completedTask = $member->tasksCreated()->create([
+            'title' => 'Member completed task',
+            'is_completed' => true,
+        ]);
+        $incompleteTask = $member->tasksCreated()->create(['title' => 'Member incomplete task']);
+        $outsider = User::factory()->create();
+        $privateTask = $outsider->tasksCreated()->create(['title' => 'Unrelated member task']);
+
+        $this->actingAs($admin)
+            ->get(route('tasks.index', ['filter' => 'completed']))
+            ->assertOk()
+            ->assertSee('Member completed task')
+            ->assertDontSee('Member incomplete task');
+
+        $this->get(route('tasks.index', ['filter' => 'incomplete']))
+            ->assertOk()
+            ->assertSee('Member incomplete task')
+            ->assertDontSee('Member completed task');
+
+        $this->actingAs($member)
+            ->get(route('tasks.index'))
+            ->assertOk()
+            ->assertSee('Member completed task')
+            ->assertSee('Member incomplete task')
+            ->assertDontSee('Unrelated member task');
+
+        $this->get(route('tasks.show', $privateTask))->assertNotFound();
     }
 
     public function test_member_can_see_tasks_assigned_to_them_without_management_actions(): void

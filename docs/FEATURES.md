@@ -1,6 +1,6 @@
 # TaskFlow Features
 
-This document describes the six required features that are implemented in the current project. The role frontend changes presentation only; Admin does not receive cross-owner task permissions.
+This document describes the six required features and additional implemented team tools. Admin has global task visibility, but cross-owner task changes remain prohibited.
 
 ## 1. Registration and authentication
 
@@ -13,7 +13,7 @@ This document describes the six required features that are implemented in the cu
 
 ## 2. Task list and status filters
 
-- Authenticated users can view tasks at `/tasks`. Admin sees tasks they created; Member sees tasks they created and tasks assigned to them.
+- Authenticated users can view tasks at `/tasks`. Admin sees all tasks; Member sees tasks they created and tasks assigned to them.
 - Filters are `all`, `completed`, and `incomplete`; invalid filter values fail validation.
 - Each entry shows title, completion state, creation time, and assignee names. The list is paginated at 10 tasks per page. Selecting a task title opens its detail page.
 - Assigned Members can confirm a task as complete; the task then displays the `Completed` label to users who can view it. The detail page marks the Member who most recently confirmed completion, and only Admin sees that marker and confirmer identity. Assignees cannot reopen completed tasks.
@@ -32,7 +32,7 @@ This document describes the six required features that are implemented in the cu
 - A Member assigned to a task can confirm it as complete. An assignee cannot edit task details or reopen a completed task.
 - Title validation is the same for create and edit: required, string, maximum 100 characters.
 - The status endpoint validates only `is_completed`; extra request fields are not used to update the task.
-- Tasks belonging to another user are scoped out and return not found for edit, update, status, and delete attempts.
+- Admin can view another user's task and its detail page. Cross-owner edit-form, task-detail update, delete, and assignee-management attempts return not found. An assigned Member may mark the task complete; unrelated Members and Admins receive a forbidden response when changing its status.
 
 ## 5. Assignee management
 
@@ -45,7 +45,7 @@ This document describes the six required features that are implemented in the cu
 
 - The shared layout displays an Admin or Member badge and role-specific navigation labels.
 - The dashboard content and task links differ between Admin and Member while using the same visual design and task actions.
-- Admin sees and manages only tasks the Admin created; there is no role-based global task management. Members can see tasks assigned to them and confirm them as complete, but can otherwise manage only tasks they created.
+- Admin can view all task lists and detail pages, but can edit, delete, change status, and manage assignees only on tasks the Admin created. Members can see tasks assigned to them and confirm them as complete, but can otherwise manage only tasks they created.
 - Guests are redirected to login before accessing the dashboard or task routes.
 
 ## 7. Shared task tags
@@ -78,8 +78,8 @@ This document describes the six required features that are implemented in the cu
 | GET / POST | `/login` | `login`, `login.store` | Guest; POST rate-limited |
 | GET | `/dashboard` | `dashboard` | Authenticated |
 | POST | `/logout` | `logout` | Authenticated |
-| GET | `/tasks` | `tasks.index` | Authenticated; own created tasks |
-| GET | `/tasks/{task}` | `tasks.show` | Authenticated; creator or assigned Member |
+| GET | `/tasks` | `tasks.index` | Authenticated; all tasks for Admin, own and assigned tasks for Member |
+| GET | `/tasks/{task}` | `tasks.show` | Authenticated; any task for Admin, creator or assigned Member |
 | GET / POST | `/tasks/create`, `/tasks` | `tasks.create`, `tasks.store` | Authenticated |
 | GET / PUT / DELETE | `/tasks/{task}/edit`, `/tasks/{task}` | `tasks.edit`, `tasks.update`, `tasks.destroy` | Authenticated; creator only |
 | PATCH | `/tasks/{task}/status` | `tasks.status.update` | Authenticated; creator may toggle, assigned Member may mark complete |

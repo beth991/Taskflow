@@ -30,9 +30,9 @@ TaskFlow is a team task management application. The first release is limited to 
 
 **Admin**
 
-- Can view all tasks.
-- Can create, edit, and delete any task.
-- Can manage assignees for any task.
+- Can view all tasks and task details.
+- Can create tasks.
+- Can edit, delete, change status, and manage assignees only for tasks the Admin created.
 
 **Member**
 

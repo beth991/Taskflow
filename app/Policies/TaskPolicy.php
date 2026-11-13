@@ -19,7 +19,8 @@ class TaskPolicy
 
     public function view(User $user, Task $task): bool
     {
-        return $this->owns($user, $task)
+        return $user->isAdmin()
+            || $this->owns($user, $task)
             || ($user->isMember() && $task->assignees()->whereKey($user->getKey())->exists());
     }
 

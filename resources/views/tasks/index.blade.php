@@ -1,15 +1,15 @@
 @extends('layouts.app')
 
-@section('title', 'My tasks')
+@section('title', auth()->user()->isAdmin() ? 'All tasks' : 'My tasks')
 
 @section('content')
     <section class="mx-auto max-w-5xl">
         <div class="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
                 <p class="text-sm font-medium text-blue-400">{{ $user->isAdmin() ? 'Admin workspace' : 'Your tasks and assignments' }}</p>
-                <h1 class="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">My tasks</h1>
+                <h1 class="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">{{ $user->isAdmin() ? 'All tasks' : 'My tasks' }}</h1>
                 <p class="mt-3 text-gray-400">
-                    {{ $user->isAdmin() ? 'Keep track of the tasks you created.' : 'Tasks you created or that were assigned to you. You can manage tasks you created.' }}
+                    {{ $user->isAdmin() ? 'Review all team tasks. You can manage tasks you created.' : 'Tasks you created or that were assigned to you. You can manage tasks you created.' }}
                 </p>
             </div>
             <a href="{{ route('tasks.create') }}" class="inline-flex justify-center rounded-lg bg-blue-500 px-4 py-3 font-semibold text-white transition hover:bg-blue-400">Create task</a>
@@ -48,6 +48,8 @@
                             <p class="mt-1 text-sm text-gray-500">
                                 @if ((int) $task->user_id === (int) $user->getKey())
                                     Created by you
+                                @elseif ($user->isAdmin())
+                                    Created by {{ $task->creator->name }}
                                 @else
                                     Assigned to you by {{ $task->creator->name }}
                                 @endif
@@ -112,6 +114,8 @@
                                 <input type="hidden" name="is_completed" value="1">
                                 <button type="submit" class="rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-400">Confirm complete</button>
                             </form>
+                        @elseif ($user->isAdmin())
+                            <span class="self-start rounded-full border border-[#3A3A3A] px-3 py-2 text-sm text-gray-400 sm:self-center">View only · created by {{ $task->creator->name }}</span>
                         @else
                             <span class="self-start rounded-full border border-[#3A3A3A] px-3 py-2 text-sm text-gray-400 sm:self-center">Assigned task · view only</span>
                         @endif

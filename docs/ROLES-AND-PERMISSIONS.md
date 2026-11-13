@@ -1,6 +1,6 @@
 # Roles and Permissions
 
-TaskFlow supports two account roles: Admin and Member. Roles affect the signed-in frontend presentation. They do not grant different task ownership permissions.
+TaskFlow supports two account roles: Admin and Member. Roles affect the signed-in frontend and task visibility. Admin can view all tasks, while modification remains scoped to the creator except for an assigned Member confirming completion.
 
 ## Role assignment
 
@@ -20,8 +20,8 @@ The shared responsive layout displays an Admin or Member role badge and uses rol
 | --- | --- | --- |
 | Register publicly | Registration creates Member; Admin cannot be selected | Registration creates Member |
 | Create task | Yes | Yes |
-| List tasks | Tasks created by this Admin only | Tasks created by or assigned to this Member |
-| View task details | Own created tasks only | Own created or assigned tasks |
+| List tasks | All tasks | Tasks created by or assigned to this Member |
+| View task details | All tasks | Own created or assigned tasks |
 | Edit title or notes | Own created tasks only | Own created tasks only |
 | Change status | Own created tasks; may reopen | Own created tasks; assigned tasks may be marked complete only |
 | Delete task | Own created tasks only | Own created tasks only |
@@ -33,6 +33,6 @@ The shared responsive layout displays an Admin or Member role badge and uses rol
 | Change own role | No | No |
 | Demote the last active Admin | No | No |
 
-**Admin does not have global task-management access.** An Admin cannot view, update, delete, or manage assignees on a task created by another user. A Member can view tasks assigned to them and confirm them as complete, but assignment alone does not grant permission to edit task details or notes, reopen a completed task, delete the task, or manage assignees. If the Member is also the creator, creator permissions apply.
+**Admin has global task visibility, not global task modification.** An Admin can view lists and details for tasks created by other users, but cannot edit, delete, change status, or manage assignees on another user's task. A Member can view tasks assigned to them and confirm them as complete, but assignment alone does not grant permission to edit task details or notes, reopen a completed task, delete the task, or manage assignees. If the Member is also the creator, creator permissions apply.
 
-These rules are enforced server-side. Task-list queries are scoped to the creator, with assigned tasks added for Members. Edit, delete, and assignee operations resolve through the authenticated user's `tasksCreated()` relationship and are authorized by `TaskPolicy`. The status endpoint permits an assigned Member to set completion to true, but rejects reopening an assigned task. Task details show the user who most recently confirmed completion only to Admin; one assignee's confirmation completes the task, and all assignees do not need to confirm. Blade visibility is not the authorization boundary.
+These rules are enforced server-side. Task-list and detail queries are global for Admin; Member queries are scoped to tasks the Member created or is assigned to. Edit, delete, and assignee operations resolve through the authenticated user's `tasksCreated()` relationship and are authorized by `TaskPolicy`. The status endpoint permits an assigned Member to set completion to true, but rejects reopening an assigned task and rejects status changes by Admin on another user's task. Task details show the user who most recently confirmed completion only to Admin; one assignee's confirmation completes the task, and all assignees do not need to confirm. Blade visibility is not the authorization boundary.

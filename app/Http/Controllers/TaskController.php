@@ -24,15 +24,19 @@ class TaskController extends Controller
 
         $filter = $request->validated('filter', 'all');
         $user = $request->user();
-        $tasks = Task::query()
-            ->where(function ($query) use ($user): void {
+        $tasks = Task::query();
+
+        if (! $user->isAdmin()) {
+            $tasks->where(function ($query) use ($user): void {
                 $query->where('user_id', $user->getKey());
 
                 if ($user->isMember()) {
                     $query->orWhereHas('assignees', fn ($assignees) => $assignees->whereKey($user->getKey()));
                 }
-            })
-            ->with(['assignees:id,name', 'creator:id,name', 'completedBy:id,name', 'tags:id,name'])
+            });
+        }
+
+        $tasks->with(['assignees:id,name', 'creator:id,name', 'completedBy:id,name', 'tags:id,name'])
             ->latest();
 
         if ($filter === 'completed') {
@@ -165,15 +169,18 @@ class TaskController extends Controller
 
     private function accessibleTask(User $user, string $id): Task
     {
-        return Task::query()
-            ->whereKey($id)
-            ->where(function ($query) use ($user): void {
+        $task = Task::query()->whereKey($id);
+
+        if (! $user->isAdmin()) {
+            $task->where(function ($query) use ($user): void {
                 $query->where('user_id', $user->getKey());
 
                 if ($user->isMember()) {
                     $query->orWhereHas('assignees', fn ($assignees) => $assignees->whereKey($user->getKey()));
                 }
-            })
-            ->firstOrFail();
+            });
+        }
+
+        return $task->firstOrFail();
     }
 }

@@ -23,7 +23,7 @@
                             {{ auth()->user()->isAdmin() ? 'Admin dashboard' : 'Member dashboard' }}
                         </a>
                         <a class="text-gray-300 transition hover:text-white" href="{{ route('tasks.index') }}">
-                            {{ auth()->user()->isAdmin() ? 'My task workspace' : 'My tasks' }}
+                            {{ auth()->user()->isAdmin() ? 'Task workspace' : 'My tasks' }}
                         </a>
                         @if (auth()->user()->isAdmin())
                             <a class="text-gray-300 transition hover:text-white" href="{{ route('admin.users.index') }}">Manage users</a>
