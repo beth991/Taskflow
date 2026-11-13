@@ -8,7 +8,7 @@ Run the full suite with:
 php artisan test
 ```
 
-Feature tests use the SQLite in-memory connection configured in `phpunit.xml`, so they do not require or modify the local MySQL database. Database-backed tests use Laravel's `RefreshDatabase` trait against that isolated test connection.
+Feature tests use the SQLite in-memory connection configured in `phpunit.xml`, so they do not require or modify the local MySQL database. Database-backed tests use Laravel's `RefreshDatabase` trait against that isolated test connection. Running the suite applies migrations only to the in-memory SQLite database.
 
 ## Current feature coverage
 
@@ -25,6 +25,18 @@ Feature tests use the SQLite in-memory connection configured in `phpunit.xml`, s
 - Authentication required for the dashboard.
 
 Task CRUD, status filters, assignee behavior, and role authorization tests are planned alongside their respective implementation milestones.
+
+`tests/Feature/TaskModelTest.php` covers task creation, creator and assignee relationships, multiple tasks/assignees, pivot timestamps, duplicate prevention, foreign-key integrity and delete behavior, the incomplete default, and the 100-character title declaration. SQLite does not enforce `VARCHAR(n)` lengths, so the title-limit test verifies the migration's `VARCHAR(100)` declaration while also storing a 100-character title. MySQL column enforcement is not exercised by the suite.
+
+## Database migrations
+
+To apply migrations in a chosen local environment after review, run:
+
+```sh
+php artisan migrate
+```
+
+This command was not run while implementing Milestone 2. The test suite exercises the migrations in SQLite memory instead.
 
 ## Code style
 

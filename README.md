@@ -15,7 +15,20 @@ TaskFlow is a team task management application under active development. Its goa
 
 The authentication milestone is implemented: users can register, log in, and log out. Registration validates the submitted profile and a password between 8 and 72 bytes, ignores any submitted role, and stores passwords using Laravel's hashed password cast.
 
-Task management, assignees, role administration, and role-specific dashboards are planned milestones and are not implemented yet. See [feature progress](docs/FEATURES.md).
+The database and Eloquent relationship milestone is implemented, including tasks and task assignees. Task creation screens, CRUD, filters, assignee management UI, role administration, and role-specific dashboards remain planned milestones. See [feature progress](docs/FEATURES.md).
+
+## Database schema
+
+TaskFlow adds two tables without changing the existing Laravel tables:
+
+| Table | Important columns | Purpose |
+| --- | --- | --- |
+| `tasks` | `id`, `user_id`, `title` (`VARCHAR(100)`), `is_completed` (default `false`), timestamps | Stores each task and its creator. |
+| `task_user` | `task_id`, `user_id`, timestamps | Joins tasks to their assignees; the `(task_id, user_id)` pair is the composite primary key, so duplicate assignments are rejected. |
+
+`tasks.user_id` references `users.id` and restricts deleting a user who created tasks, preserving ownership. Both pivot foreign keys cascade when their parent task or user is deleted, so dependent assignment rows are cleaned up. `Task::creator()` and `User::tasksCreated()` represent task ownership. `Task::assignees()` and `User::assignedTasks()` represent the many-to-many assignment and include pivot timestamps.
+
+The existing `users` table remains unchanged. The tasks schema is additive and will not be applied to a local database until you run the migrations.
 
 ## Requirements
 
@@ -49,7 +62,7 @@ Task management, assignees, role administration, and role-specific dashboards ar
    php artisan migrate
    ```
 
-   The current migrations contain Laravel's base tables. TaskFlow task and role migrations will be documented when those milestones are implemented.
+   This applies the Laravel base migrations and the TaskFlow task/pivot migrations to the configured local database. Do not run it against a database you do not intend to update. Admin/Member role schema is not implemented yet.
 
 5. Install frontend dependencies and build the assets:
 

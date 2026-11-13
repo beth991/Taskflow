@@ -12,11 +12,17 @@ This document records implemented behavior only. Planned work is labeled clearly
 - Logout clears the authenticated session and regenerates its CSRF token.
 - The dashboard route requires authentication.
 
+## Database and Eloquent relationships — implemented
+
+- `tasks` stores creator, a `VARCHAR(100)` title, completion state (default `false`), and timestamps.
+- `task_user` connects tasks and assignees with timestamps and a composite primary key on (`task_id`, `user_id`).
+- Task creator deletion is restricted while created tasks exist; task/user deletion cascades only to dependent pivot records.
+- `Task::creator()` / `User::tasksCreated()` represent ownership; `Task::assignees()` / `User::assignedTasks()` represent assignment.
+
 ## Planned milestones
 
-- Task and assignee database tables and Eloquent relationships.
 - Task listing, status filters, and task create/edit/delete operations.
-- Assignee management.
+- Assignee management screens and operations.
 - Admin/Member roles, policies, and role-specific access rules.
 - Full role-specific dashboard and navigation.
 
