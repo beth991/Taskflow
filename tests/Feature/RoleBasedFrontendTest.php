@@ -24,6 +24,7 @@ class RoleBasedFrontendTest extends TestCase
             ->assertSee('Task workspace')
             ->assertSee('Open task workspace')
             ->assertSee('Manage users')
+            ->assertSee('Review and manage all team tasks')
             ->assertDontSee('Member workspace');
     }
 
@@ -42,10 +43,11 @@ class RoleBasedFrontendTest extends TestCase
             ->assertDontSee('Admin workspace');
     }
 
-    public function test_admin_can_view_all_tasks_but_cannot_manage_another_users_task(): void
+    public function test_admin_can_manage_tasks_created_by_members(): void
     {
         $admin = $this->createAdmin();
         $member = User::factory()->create()->fresh();
+        $assignee = User::factory()->create();
         $adminTask = $admin->tasksCreated()->create(['title' => 'Admin owned task']);
         $memberTask = $member->tasksCreated()->create(['title' => 'Member private task']);
 
@@ -55,21 +57,48 @@ class RoleBasedFrontendTest extends TestCase
             ->assertSee('Admin owned task')
             ->assertSee('Member private task')
             ->assertSee('Created by '.$member->name)
-            ->assertSee('View only · created by '.$member->name);
+            ->assertSee('Review and manage tasks across the team.')
+            ->assertSee('Edit')
+            ->assertSee('Delete');
 
         $this->get(route('tasks.show', $memberTask))
             ->assertOk()
             ->assertSee('Member private task')
             ->assertSee('Created by')
-            ->assertSee($member->name);
+            ->assertSee($member->name)
+            ->assertSee('Edit task');
 
-        $this->get(route('tasks.edit', $memberTask))->assertNotFound();
-        $this->put(route('tasks.update', $memberTask), ['title' => 'Changed by Admin'])->assertNotFound();
-        $this->delete(route('tasks.destroy', $memberTask))->assertNotFound();
-        $this->patch(route('tasks.status.update', $memberTask), ['is_completed' => true])->assertForbidden();
-        $this->post(route('tasks.assignees.store', $memberTask), ['user_ids' => [$admin->id]])->assertNotFound();
+        $this->get(route('tasks.edit', $memberTask))->assertOk()->assertSee('Manage assignees');
+        $this->put(route('tasks.update', $memberTask), [
+            'title' => 'Changed by Admin',
+            'notes' => 'Admin updated the task details.',
+        ])->assertRedirect(route('tasks.index'));
+        $this->post(route('tasks.assignees.store', $memberTask), ['user_ids' => [$assignee->id]])
+            ->assertRedirect(route('tasks.edit', $memberTask));
+        $this->assertDatabaseHas('task_user', ['task_id' => $memberTask->id, 'user_id' => $assignee->id]);
 
-        $this->assertDatabaseHas('tasks', ['id' => $memberTask->id, 'title' => 'Member private task']);
+        $this->delete(route('tasks.assignees.destroy', $memberTask), ['user_id' => $assignee->id])
+            ->assertRedirect(route('tasks.edit', $memberTask));
+        $this->assertDatabaseMissing('task_user', ['task_id' => $memberTask->id, 'user_id' => $assignee->id]);
+
+        $this->patch(route('tasks.status.update', $memberTask), ['is_completed' => true])
+            ->assertRedirect(route('tasks.index'));
+        $this->assertDatabaseHas('tasks', [
+            'id' => $memberTask->id,
+            'user_id' => $member->id,
+            'title' => 'Changed by Admin',
+            'is_completed' => true,
+            'completed_by' => $admin->id,
+        ]);
+
+        $this->patch(route('tasks.status.update', $memberTask), ['is_completed' => false])
+            ->assertRedirect(route('tasks.index'));
+        $this->assertDatabaseHas('tasks', ['id' => $memberTask->id, 'is_completed' => false, 'completed_by' => null]);
+
+        $taskToDelete = $member->tasksCreated()->create(['title' => 'Member task to delete']);
+        $this->delete(route('tasks.destroy', $taskToDelete))->assertRedirect(route('tasks.index'));
+        $this->assertDatabaseMissing('tasks', ['id' => $taskToDelete->id]);
+
         $this->assertDatabaseHas('tasks', ['id' => $adminTask->id, 'title' => 'Admin owned task']);
     }
 
@@ -184,6 +213,39 @@ class RoleBasedFrontendTest extends TestCase
         $this->actingAs($outsider)
             ->get(route('tasks.show', $task))
             ->assertNotFound();
+    }
+
+    public function test_a_second_assignee_cannot_overwrite_the_first_completion_attribution(): void
+    {
+        $creator = User::factory()->create();
+        $firstAssignee = User::factory()->create()->fresh();
+        $secondAssignee = User::factory()->create()->fresh();
+        $task = $creator->tasksCreated()->create(['title' => 'Shared completion task']);
+        $task->assignees()->attach([$firstAssignee->id, $secondAssignee->id]);
+
+        $this->actingAs($firstAssignee)
+            ->patch(route('tasks.status.update', $task), ['is_completed' => true])
+            ->assertRedirect(route('tasks.index'));
+
+        $this->assertDatabaseHas('tasks', [
+            'id' => $task->id,
+            'is_completed' => true,
+            'completed_by' => $firstAssignee->id,
+        ]);
+
+        $this->actingAs($secondAssignee)
+            ->patch(route('tasks.status.update', $task), ['is_completed' => true])
+            ->assertRedirect(route('tasks.index'));
+
+        $this->actingAs($creator)
+            ->patch(route('tasks.status.update', $task), ['is_completed' => true])
+            ->assertRedirect(route('tasks.index'));
+
+        $this->assertDatabaseHas('tasks', [
+            'id' => $task->id,
+            'is_completed' => true,
+            'completed_by' => $firstAssignee->id,
+        ]);
     }
 
     public function test_status_filters_include_assigned_tasks_without_leaking_unrelated_tasks(): void

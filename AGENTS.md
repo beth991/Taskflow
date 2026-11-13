@@ -1,127 +1,99 @@
-# TaskFlow — Team Task Management
+# TaskFlow Development Guide
 
-## Project Stack
+## Project overview
 
-- Laravel 13
-- PHP 8.4
-- Blade
-- Tailwind CSS
-- Vanilla JavaScript
-- MySQL
-- GitHub
+TaskFlow is an internal team task management application built with Laravel 13, PHP 8.4, Blade, Tailwind CSS 4, Vanilla JavaScript, Vite, and MySQL 8.4. Follow Laravel conventions and the existing project structure. Do not add packages or frameworks without a clear technical reason and the user's approval. Docker is not part of the normal development or test workflow.
 
-Follow Laravel's established conventions and use the project's existing tooling. Do not add dependencies without a clear technical reason and user approval.
+## Important project structure
 
-## Product Scope
+- `app/Enums/`: supported user roles.
+- `app/Http/Controllers/`: web and authentication controllers.
+- `app/Http/Requests/`: request validation.
+- `app/Models/`: User, Task, and Tag Eloquent models and relationships.
+- `app/Policies/`: task, tag, and user authorization rules.
+- `app/Support/`: shared infrastructure such as MySQL advisory locking.
+- `database/migrations/`: schema history; create additive migrations for schema changes.
+- `database/seeders/`: local/test data and deliberate initial Admin provisioning.
+- `resources/views/`: Blade layouts, authentication, dashboards, tasks, tags, and Admin pages.
+- `resources/css/`, `resources/js/`, `vite.config.js`: Tailwind/Vite frontend assets and Vanilla JavaScript.
+- `routes/web.php`: named web routes and authentication boundaries.
+- `tests/Feature/`: HTTP, authorization, seeder, and workflow coverage.
 
-TaskFlow is a team task management application. The first release is limited to the required features below. Do not add priorities, deadlines, tags, complex statistics charts, or other unrequested features.
+## Product behavior and access rules
 
-### Required Features
+The application includes registration/login, role-specific dashboards/navigation, task listing and status filters, task create/view/edit/delete, notes, assignees, shared tags, Admin user/role management, and completion attribution.
 
-- User registration and login using Laravel Authentication.
-- Separate Admin and Member dashboards with different navigation, while keeping the visual design consistent.
-- Task listing with filters for completed and incomplete tasks.
-- Create, view, edit, and delete tasks.
-- Task title is required and limited to 100 characters.
-- Add and remove task assignees.
-- Many-to-many relationship between `User` and `Task` through `task_user`.
+- Public registration always creates a Member. Never accept a public role field as authority.
+- Admin-only user and tag management must be authorized on the server through policies or equivalent backend checks.
+- Members can see tasks they created or that are assigned to them. They can edit/delete task details and manage assignees only for tasks they created. An assignee can confirm an assigned task as complete; assignment does not grant detail-edit, delete, assignee-management, or reopen permission.
+- Admins can view, edit, delete, change status, and manage assignees for all tasks, regardless of creator. Members can view tasks they created or that are assigned to them; they can edit/delete/manage assignees on tasks they created, and an assigned Member may confirm a task as complete. These Member operation details are project assumptions because the assignment leaves them open.
+- Task completion attribution records the first successful completion transition; preserve atomic behavior so a later concurrent completion cannot replace the completing user.
+- Admin role changes protect self-role changes and the last active Admin. Initial Admin creation is through `TaskFlowAdminSeeder`, not public registration.
 
-### Access Rules
+When changing a permission, review the policy, controller query scope, Form Request, routes, Blade controls, and feature tests together. UI visibility is never a substitute for backend authorization. Preserve Task Tags, completion attribution, and assignee behavior when changing related code.
 
-**Admin**
+## Laravel, PHP, and Blade conventions
 
-- Can view all tasks and task details.
-- Can create tasks.
-- Can edit, delete, change status, and manage assignees only for tasks the Admin created.
+- Keep responsibilities separated among controllers, Form Requests, models, policies, and Blade views.
+- Use named routes, route model binding where compatible with the existing IDOR behavior, Eloquent relationships, and eager loading for displayed relations.
+- Validate request input server-side; use validated/safe input only. Keep creator IDs and role assignment out of untrusted mass assignment.
+- Use explicit model fillable/guarded configuration. Set privileged fields only through deliberate trusted code paths.
+- In Blade, use escaped `{{ }}` output for user-controlled values. Avoid raw `{!! !!}` output for untrusted data.
+- Use Tailwind CSS 4 and the existing Vite build. Frontend behavior uses Vanilla JavaScript; do not add a framework.
+- Avoid duplicated logic and unrelated refactoring. Keep the responsive dark TaskFlow design and accessible labels/focus states.
 
-**Member**
+## Security requirements
 
-- Can view tasks they created and tasks assigned to them.
-- Can create tasks.
-- Can edit and delete only tasks they created.
-- Can manage assignees only for tasks they created.
+- Keep Laravel authentication, CSRF middleware, session protections, and route middleware enabled.
+- Authentication routes are throttled; do not weaken rate limits without a reviewed reason.
+- Regenerate the session after authentication and invalidate it on logout.
+- Hash passwords through Laravel's hashing facilities. Never store, return, log, or commit plaintext passwords, tokens, APP_KEY, or other secrets.
+- Use Eloquent or parameterized queries; never concatenate untrusted values into SQL.
+- Enforce ownership and role rules on every protected backend operation. Test manipulated IDs and forged fields, including `role`, `user_id`, completion fields, and tag/assignee IDs.
+- Treat notes, task titles, tag names, and user names as untrusted output and retain Blade escaping.
+- Do not modify `.env`, `docker.env`, or credentials without explicit authorization. Never add environment files or secrets to Git.
+- The Admin seeder reads values through Laravel config (`taskflow.admin.*`); use a secure runtime environment and do not expose the bootstrap password in output or shell history.
 
-Enforce these rules on the server for every relevant action. Hiding links or buttons in Blade is not authorization.
+## Database and migrations
 
-### Registration and Admin Provisioning
+The current application schema includes Laravel support tables plus `users`, `tasks`, `task_user`, `tags`, and `tag_task`. Tasks include nullable notes and `completed_by`; users have the `admin` or `member` role. Preserve foreign keys, deletion rules, composite pivot keys, and timestamps.
 
-- Newly registered users must automatically receive the Member role.
-- Never accept a role from public registration input or allow users to assign their own role.
-- Create or promote Admin accounts only through a deliberate, restricted, and secure administrative mechanism. Do not expose Admin creation through public registration.
+- Make schema changes with new additive migrations; do not rewrite applied migrations.
+- Never run migrations, seeders, destructive database commands, or manual data cleanup unless the user explicitly requests the exact action and target.
+- The normal PHPUnit setup uses SQLite in-memory (`phpunit.xml`). It is isolated from the application's MySQL configuration.
+- MySQL concurrency integration testing is **not configured or verified**. SQLite unit/feature tests do not prove MySQL advisory-lock concurrency. Do not claim otherwise or connect tests to the normal development database.
+- Do not use Docker for routine development or tests; no Docker command is part of the standard workflow.
 
-## Design System
+## Testing and quality checks
 
-- Dark theme with background `#0A0A0A`.
-- Sidebar `#111111`.
-- Cards `#1A1A1A`.
-- Borders `#2A2A2A`.
-- Electric blue accent `#3B82F6`.
-- Primary text is white.
-- Support desktop, tablet, and mobile layouts.
-- Keep Admin and Member experiences visually consistent while providing their respective dashboard content and navigation.
-- Use accessible semantic HTML, visible focus states, and sufficient contrast.
+Add or update focused feature tests for changed behavior, including authorization-denial cases and invalid/forged input. The suite should cover authentication, roles, tasks, filters, notes, completion attribution, assignees, tags, Admin user management, and safe output.
 
-## Data Model
+From PowerShell at the repository root, use:
 
-The core database tables are:
+```powershell
+php artisan test
+vendor/bin/pint --test
+git diff --check
+git status --short
+git diff
+```
 
-- `users`
-- `tasks`
-- `task_user`
+Run tests only with the configured test database. Do not run them if configuration could direct them to a non-test database; inspect test configuration without printing `.env` secrets. Report exact commands and results; never infer a passing result.
 
-Represent task assignment as a many-to-many relationship. Follow Laravel naming and migration conventions, define appropriate foreign keys and indexes, and use the project's MySQL configuration. Do not run migrations unless the user explicitly requests it.
+## Git workflow
 
-## Security Standards
+- Work on one approved stage at a time and preserve pre-existing local changes.
+- Before editing, inspect `git status --short`; before review, inspect `git diff` and untracked files.
+- Keep changes focused and make Conventional Commits only after a milestone is complete, reviewed, and tested.
+- Stage only explicitly reviewed files. Check staged diff and status before commit.
+- Never commit or push without the user's explicit approval. Never force-push.
+- Never discard, reset, overwrite, or clean local work that is outside the requested scope.
 
-- Use Laravel Authentication for registration and login.
-- Validate input with dedicated Form Request classes where appropriate.
-- Enforce authorization with Laravel Policies and apply them to every protected operation.
-- Keep CSRF protection enabled for state-changing web requests.
-- Use Eloquent or parameterized query builder operations; never interpolate untrusted input into SQL.
-- Escape output in Blade by default. Do not render untrusted content as raw HTML.
-- Protect mass assignment with explicit `$fillable` or `$guarded` rules and validated data.
-- Hash passwords using Laravel's supported hashing facilities; never store or log plaintext passwords.
-- Never expose `.env` contents, credentials, application keys, or other secrets in responses, logs, views, or Git.
-- Do not weaken authentication, authorization, session, or other security configuration to make a feature work.
+## Operating boundaries
 
-## Code Organization and Quality
-
-- Follow official Laravel conventions and the existing project structure.
-- Keep responsibilities separated across Controllers, Models, Form Requests, Policies, and Blade Views.
-- Avoid duplicated logic; extract shared behavior when it improves clarity.
-- Keep controllers focused and use named routes and route model binding where suitable.
-- Keep frontend behavior in Vanilla JavaScript; do not introduce a frontend framework.
-- Use Tailwind CSS and existing project asset tooling for styling.
-- Do not add dependencies without a clear reason and explicit user approval.
-- Preserve existing project behavior unless the requested feature requires a change.
-
-## Testing
-
-Add or update tests for relevant behavior. Cover at least:
-
-- Registration and login.
-- Admin and Member authorization boundaries.
-- Task create, read, update, and delete behavior.
-- Adding and removing assignees.
-- Completed and incomplete task filters.
-- Required title validation and the 100-character maximum.
-
-Use the test database and project testing conventions. Do not run migrations against a configured non-test database. Report which tests were run and their result; do not claim tests passed unless they were run.
-
-## Git and GitHub
-
-- Use Conventional Commits.
-- Organize work into small commits grouped by completed and tested features.
-- Before proposing a commit, inspect `git status` and `git diff`.
-- Never add `.env`, credentials, or other secrets to the repository.
-- Do not commit or push without the user's explicit approval.
-- Do not combine all work into one large commit.
-
-## Working Rules
-
-- Work on one stage at a time. Do not move to the next stage without the user's approval.
-- Do not delete important files without the user's approval.
-- Do not change Windows security configuration.
-- Do not install additional packages without the user's approval.
-- Do not run database migrations unless the user explicitly requests them.
-- Respect the scope and explicit constraints in the current user request. If the user limits changes to specific files, do not modify other files.
+- Do not install dependencies without approval.
+- Do not run migrations or seeders without explicit approval.
+- Do not use Docker as part of the normal project workflow.
+- Do not change Windows security settings.
+- Do not make unrelated feature, source, test, migration, or configuration changes when the user limits the scope to documentation or named files.
+- If an explicit product requirement conflicts with current code, document the discrepancy and ask for direction rather than silently broadening scope.

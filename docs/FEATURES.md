@@ -1,6 +1,6 @@
 # TaskFlow Features
 
-This document describes the six required features and additional implemented team tools. Admin has global task visibility, but cross-owner task changes remain prohibited.
+This document describes the six required features and additional implemented team tools. Admin can manage tasks across all creators.
 
 ## 1. Registration and authentication
 
@@ -28,24 +28,24 @@ This document describes the six required features and additional implemented tea
 
 ## 4. Edit, status, and delete
 
-- A task creator can edit the task title and notes, change its completed/incomplete status, or delete it.
+- A task creator can edit the task title and notes, change its completed/incomplete status, or delete it. Admin can perform these actions on any task.
 - A Member assigned to a task can confirm it as complete. An assignee cannot edit task details or reopen a completed task.
 - Title validation is the same for create and edit: required, string, maximum 100 characters.
 - The status endpoint validates only `is_completed`; extra request fields are not used to update the task.
-- Admin can view another user's task and its detail page. Cross-owner edit-form, task-detail update, delete, and assignee-management attempts return not found. An assigned Member may mark the task complete; unrelated Members and Admins receive a forbidden response when changing its status.
+- Admin can view and manage another user's task and its detail page. Members can only edit or delete their own tasks; an assigned Member may mark a task complete, while unrelated Members cannot change its status.
 
 ## 5. Assignee management
 
-- A task creator can add one or more existing users as assignees from the task edit page and remove current assignees.
+- A task creator or Admin can add one or more existing users as assignees from the task edit page and remove current assignees.
 - User IDs must exist; duplicate IDs in one request are rejected. Re-adding an existing assignee does not create a duplicate pivot record.
 - Assignee names are shown on the task list and edit page. Email addresses are not shown by this feature.
-- Only a task creator can manage its assignees. CSRF protection is enabled on state-changing forms.
+- Only a task creator or Admin can manage a task's assignees. CSRF protection is enabled on state-changing forms.
 
 ## 6. Role-specific frontend
 
 - The shared layout displays an Admin or Member badge and role-specific navigation labels.
 - The dashboard content and task links differ between Admin and Member while using the same visual design and task actions.
-- Admin can view all task lists and detail pages, but can edit, delete, change status, and manage assignees only on tasks the Admin created. Members can see tasks assigned to them and confirm them as complete, but can otherwise manage only tasks they created.
+- Admin can view and manage all task lists and detail pages, including Member-created tasks. Members can see tasks assigned to them and confirm them as complete, but can otherwise manage only tasks they created. These Member operation details are assumptions because the assignment does not specify them further.
 - Guests are redirected to login before accessing the dashboard or task routes.
 
 ## 7. Shared task tags
@@ -81,9 +81,9 @@ This document describes the six required features and additional implemented tea
 | GET | `/tasks` | `tasks.index` | Authenticated; all tasks for Admin, own and assigned tasks for Member |
 | GET | `/tasks/{task}` | `tasks.show` | Authenticated; any task for Admin, creator or assigned Member |
 | GET / POST | `/tasks/create`, `/tasks` | `tasks.create`, `tasks.store` | Authenticated |
-| GET / PUT / DELETE | `/tasks/{task}/edit`, `/tasks/{task}` | `tasks.edit`, `tasks.update`, `tasks.destroy` | Authenticated; creator only |
-| PATCH | `/tasks/{task}/status` | `tasks.status.update` | Authenticated; creator may toggle, assigned Member may mark complete |
-| POST / DELETE | `/tasks/{task}/assignees` | `tasks.assignees.store`, `tasks.assignees.destroy` | Authenticated; creator only |
+| GET / PUT / DELETE | `/tasks/{task}/edit`, `/tasks/{task}` | `tasks.edit`, `tasks.update`, `tasks.destroy` | Authenticated; Admin or creator |
+| PATCH | `/tasks/{task}/status` | `tasks.status.update` | Authenticated; Admin/creator may toggle, assigned Member may mark complete |
+| POST / DELETE | `/tasks/{task}/assignees` | `tasks.assignees.store`, `tasks.assignees.destroy` | Authenticated; Admin or creator |
 | GET / POST | `/admin/tags` | `admin.tags.index`, `admin.tags.store` | Authenticated Admin only |
 | GET / POST | `/admin/tags/create` | `admin.tags.create` | Authenticated Admin only |
 | GET / PUT / DELETE | `/admin/tags/{tag}/edit`, `/admin/tags/{tag}` | `admin.tags.edit`, `admin.tags.update`, `admin.tags.destroy` | Authenticated Admin only |

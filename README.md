@@ -1,19 +1,22 @@
 # TaskFlow
 
-TaskFlow is a team task management application. It helps users create and track their tasks, filter them by completion status, and assign existing users to tasks. Admin and Member accounts receive role-specific dashboard and navigation labels while using the same task features and ownership rules.
+TaskFlow is an internal team task management application. It helps a team record work, assign tasks, and track completion. Admin and Member accounts receive role-specific dashboards and navigation.
 
 ## Six required features
 
-1. Public registration, login, and logout. Public registration always creates a Member; users cannot select or submit their own role.
-2. A task list with all, completed, and incomplete filters, plus task detail pages.
-3. Task creation with a required title of at most 100 characters and optional task notes.
-4. Editing task title and notes, changing status, and deleting tasks created by the signed-in user.
-5. Adding and removing assignees on tasks created by the signed-in user.
-6. Role-specific Admin and Member dashboard content and navigation.
+1. Registration, login, and logout. Public registration always creates a Member; users cannot choose their role.
+2. Task listing with all, completed, and incomplete filters, and task detail pages.
+3. Task creation with a required title (maximum 100 characters) and optional notes.
+4. Editing task title and notes, changing status, and deleting tasks according to server-side authorization.
+5. Adding and removing assignees on tasks the signed-in user is authorized to manage.
+6. Admin and Member dashboards/navigation with a consistent responsive design.
 
-Admin can view all tasks and details, including Member-created tasks, but can edit, delete, change status, and manage assignees only on tasks created by that Admin. A Member's task list includes tasks the Member created and tasks assigned to them. Members can confirm assigned tasks as complete; Admin sees the confirming Member marked on the task detail page. Assignment does not grant permission to edit notes or details, reopen a completed task, delete it, or manage assignees.
+Other implemented team tools include shared Task Tags and Admin user/role management. Admins can manage tags and change another user's role subject to protection against self-demotion and removal of the last Admin. The Admin completion attribution is shown on a task detail page the Admin is authorized to view.
 
-Task tags are an additional team feature: Admin manages the shared tag list, and Members can select existing tags on tasks they are allowed to create or edit.
+### Current task permission behavior
+
+- Admin can view, edit, delete, change status, and manage assignees for every task, including tasks created by Members.
+- A Member can see tasks they created and tasks assigned to them. A Member can edit/delete task details and manage assignees only on tasks they created. An assignee may confirm an assigned task as complete, but cannot edit its details, delete it, manage its assignees, or reopen it.
 
 ## Technology
 
@@ -32,37 +35,38 @@ Task tags are an additional team feature: Admin manages the shared tag list, and
 - MySQL 8.4.
 - Node.js and npm for frontend assets.
 
+For the local Windows workflow below, use XAMPP for PHP/MySQL or an equivalent local PHP 8.4 and MySQL 8.4 installation. Docker is not required.
+
 ## Installation
 
-1. Install PHP dependencies:
+### Windows with XAMPP
 
-   ```sh
-   composer install
-   ```
-
-2. Create the local environment file and application key. In PowerShell:
+1. Install/start XAMPP and start MySQL from the XAMPP Control Panel. Confirm the PHP CLI used by PowerShell is PHP 8.4 and has Laravel's required extensions, including PDO MySQL. Install Composer 2 and Node.js/npm if they are not already available.
+2. Open PowerShell in the project directory and install dependencies:
 
    ```powershell
-   Copy-Item .env.example .env
+   composer install
+   if (-not (Test-Path .env)) { Copy-Item .env.example .env }
    php artisan key:generate
-   ```
-
-3. Create an empty local MySQL database (for example, `taskflow_db`) and configure `.env` for it. Set `DB_CONNECTION=mysql`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, and `DB_PASSWORD` for your local MySQL installation. The checked-in `.env.example` defaults to SQLite; configure the intended local database before migrating. Never commit or share `.env` or its secrets.
-
-4. Install and build frontend assets:
-
-   ```sh
    npm install
    npm run build
    ```
 
-5. After confirming the configured database is the intended local database, apply the migrations:
+   If `.env` already exists, preserve it instead of copying over it. The repository's `.env.example` defaults to SQLite; for the XAMPP MySQL workflow, set `DB_CONNECTION=mysql`, `DB_HOST=127.0.0.1`, `DB_PORT=3306`, and the intended `DB_DATABASE`, `DB_USERNAME`, and `DB_PASSWORD` in your untracked local `.env`.
+3. Create the selected empty local database (for example, `taskflow_db`) in phpMyAdmin or MySQL. Verify the connection settings and target database before applying schema changes.
+4. After verifying the database target, run the migration command below. Start the Laravel development server with `php artisan serve` and open the URL Artisan prints (normally `http://127.0.0.1:8000`). For asset hot reload, run `npm run dev` in a second PowerShell window.
+
+The Composer `setup` script runs migrations automatically. Use the explicit manual steps in this README instead, so you can verify the database target before any migration.
+
+### Apply database migrations
+
+Only after confirming `.env` points to the intended local database, apply the checked-in schema:
 
    ```sh
    php artisan migrate
    ```
 
-   Migrations create the Laravel support tables, add the Member-default role column, and create the task and assignee tables. This documentation does not imply that migrations have been run against your database.
+This creates Laravel support tables and the TaskFlow users/roles, tasks, assignee, notes/completion attribution, and tag schema. This documentation does not imply that migrations have been run against your database. Never use `migrate:fresh` or `db:wipe` on a database containing data.
 
 ## Run the application
 
@@ -72,6 +76,85 @@ php artisan serve
 
 Visit the URL printed by Artisan. For frontend hot reload during development, run `npm run dev` in another terminal.
 
+## Optional Docker deployment notes (VPS)
+
+Docker is not required for the supported local XAMPP workflow. The following optional deployment notes are retained for the repository's Docker files; they have not been validated by this documentation update. Docker uses a separate ignored `docker.env` file and does not read or copy the local XAMPP `.env`. The build context excludes all `.env*` and `docker.env*` files. MySQL has no published host port; only Nginx is published, bound to `127.0.0.1` so a host reverse proxy can provide public HTTPS.
+
+### Requirements
+
+- Docker Engine and the Docker Compose plugin on the Ubuntu VPS.
+- A host-level HTTPS reverse proxy (for example, Nginx or Caddy) forwarding to `127.0.0.1:8080`.
+- An empty or backed-up Docker MySQL volume before first deployment.
+
+### Configure and start
+
+From the project directory on the VPS:
+
+```sh
+cp docker.env.example docker.env
+chmod 600 docker.env
+```
+
+Edit `docker.env` on the VPS. Set `APP_URL` to the HTTPS site URL, choose a free local `APP_PORT` if needed, and provide unique strong values for `MYSQL_PASSWORD` and `MYSQL_ROOT_PASSWORD`. Generate an application key with a trusted PHP/Laravel installation using `php artisan key:generate --show`, then place the output in `APP_KEY`. Do not put secrets in the Dockerfile, source control, or command history. `APP_ENV=production` and `APP_DEBUG=false` are enforced by the image and Compose configuration; the example file contains no credentials.
+
+The MySQL image uses its initialization variables only when the data volume is first initialized. Editing a password in `docker.env` later does not rotate the password inside an existing database; rotate the database account deliberately and update the app setting together. Do not delete the volume to resolve a credential mismatch.
+
+Build and start services:
+
+```sh
+docker compose --env-file docker.env build
+docker compose --env-file docker.env up -d
+```
+
+The asset stage uses `npm ci` when a lock file is available and falls back to `npm install --no-package-lock` otherwise. For identical dependency resolution across clean checkouts, add and review a tracked `package-lock.json` in a separately approved change.
+
+Check service state and the database health check:
+
+```sh
+docker compose --env-file docker.env ps
+docker compose --env-file docker.env logs --tail=100 app nginx db
+```
+
+MySQL must report `healthy` before the app starts. Application migrations are deliberately **not** run at container startup. After confirming the target VPS database and taking a backup, apply them manually:
+
+```sh
+docker compose --env-file docker.env exec app php artisan migrate --force
+```
+
+Stop the services while preserving their named volumes:
+
+```sh
+docker compose --env-file docker.env down
+```
+
+Do not add `--volumes`/`-v` when stopping; that removes persistent Docker volumes, including the database.
+
+### Database backup
+
+Create encrypted or access-restricted backups on the VPS and copy them off-host. This command writes a temporary client credentials file inside the database container with restrictive permissions, streams the dump to a host file, and removes the temporary file:
+
+```sh
+umask 077
+docker compose --env-file docker.env exec -T db sh -c 'umask 077; printf "[client]\\nuser=%s\\npassword=%s\\n" "$MYSQL_USER" "$MYSQL_PASSWORD" > /tmp/taskflow-client.cnf; mysqldump --defaults-extra-file=/tmp/taskflow-client.cnf --single-transaction "$MYSQL_DATABASE"; result=$?; rm -f /tmp/taskflow-client.cnf; exit $result' > taskflow-backup.sql
+```
+
+Encrypt or move the dump to protected off-host storage, verify it, and periodically test restoration in a separate environment. Do not publish the database port or commit backup files. Before any migration or update that changes schema, take and verify a fresh backup.
+
+### Update the application
+
+After reviewing and deploying the intended Git revision:
+
+```sh
+git pull --ff-only
+docker compose --env-file docker.env build
+docker compose --env-file docker.env up -d
+docker compose --env-file docker.env ps
+```
+
+Review logs and health before manually running any required migration. Keep the previous image/revision and a verified database backup available for recovery. Avoid removing named volumes during routine updates.
+
+The Docker app and MySQL share an internal network. The app image runs PHP-FPM as the unprivileged `www-data` user; the Nginx image contains only the public document root and serves `/var/www/html/public`. Production PHP configuration disables displayed errors and enables OPcache. No migration or seeder runs automatically.
+
 ## Accounts and roles
 
 ### Member account
@@ -80,13 +163,13 @@ Register at `/register`. Public registration validates the name, unique email, a
 
 ### Initial Admin account
 
-There is no public Admin registration and no sample Admin credential. Provision the first Admin deliberately using the existing `Database\Seeders\TaskFlowAdminSeeder`. Supply these process environment variables through a secure environment or secret manager:
+There is no public Admin registration and no sample Admin credential. Provision the first Admin deliberately using the existing `Database\Seeders\TaskFlowAdminSeeder`. The variable names are also listed in `.env.example`; set real values only in the untracked local `.env` or a secure process environment, never in a committed file:
 
 - `TASKFLOW_ADMIN_NAME`
 - `TASKFLOW_ADMIN_EMAIL`
 - `TASKFLOW_ADMIN_PASSWORD` (at least 12 characters and no more than 72 bytes)
 
-The seeder reads these values through `config/taskflow.php`, validates them, hashes the password through the User model, and never prints it. It creates only the first Admin. Re-running it for that same Admin email is safe; it refuses to promote an existing Member or create another Admin with a different email. On MySQL it serializes provisioning with a named advisory lock.
+The seeder reads these values through `config/taskflow.php`, validates them, hashes the password through the User model, and never prints it. It creates only the first Admin. Re-running it for that same Admin email is safe; it refuses to promote an existing Member or create another Admin with a different email. On MySQL it serializes provisioning with a named advisory lock. The concurrency behavior has not been verified with a dedicated MySQL integration test.
 
 Run the dedicated seeder after configuring the variables for the Artisan process:
 
@@ -107,6 +190,19 @@ php artisan db:seed
 ```
 
 It creates a `Test User` only in `local` or `testing`. It returns without creating that user in production and does not provision an Admin. Do not use test accounts as production credentials; no demo password is documented here.
+
+## Architecture and security
+
+Web routes are defined in `routes/web.php`. Controllers coordinate requests, Form Requests validate input, Eloquent models define user/task/tag relations, and Policies enforce task, tag, and user permissions. Blade renders the pages; Vite builds Tailwind assets and the small Vanilla JavaScript behaviors. Feature tests live in `tests/Feature`.
+
+The application uses authenticated routes, CSRF protection for web forms, throttling on login and registration, session regeneration after login/registration, and session invalidation on logout. Passwords are hashed by Laravel. Role values are represented by the `UserRole` enum and are not mass assignable; public registration creates Members. Protected actions are checked server-side. Eloquent/query-builder bindings protect database input, and Blade's escaped `{{ }}` syntax is used for dynamic output.
+
+## Boundaries and assumptions
+
+- This release focuses on internal task assignment, status, notes, shared tags, and Admin account/role management. It does not include deadlines, notifications, reporting, or complex analytics.
+- Admin-wide task management is available as required by the assignment. Member task operations retain the assumptions described above.
+- The default automated test database is SQLite in-memory. No dedicated MySQL concurrency integration environment is configured, so MySQL advisory-lock behavior must not be described as integration-tested.
+- XAMPP is the local Windows setup. Docker is an optional separate deployment path documented below, not an installation prerequisite or the normal test environment.
 
 ## Tests and code style
 

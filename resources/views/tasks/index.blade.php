@@ -9,7 +9,7 @@
                 <p class="text-sm font-medium text-blue-400">{{ $user->isAdmin() ? 'Admin workspace' : 'Your tasks and assignments' }}</p>
                 <h1 class="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">{{ $user->isAdmin() ? 'All tasks' : 'My tasks' }}</h1>
                 <p class="mt-3 text-gray-400">
-                    {{ $user->isAdmin() ? 'Review all team tasks. You can manage tasks you created.' : 'Tasks you created or that were assigned to you. You can manage tasks you created.' }}
+                    {{ $user->isAdmin() ? 'Review and manage tasks across the team.' : 'Tasks you created or that were assigned to you. You can manage tasks you created.' }}
                 </p>
             </div>
             <a href="{{ route('tasks.create') }}" class="inline-flex justify-center rounded-lg bg-blue-500 px-4 py-3 font-semibold text-white transition hover:bg-blue-400">Create task</a>
@@ -90,7 +90,7 @@
                             </div>
                         </div>
 
-                        @if ((int) $task->user_id === (int) $user->getKey())
+                        @if ($user->isAdmin() || (int) $task->user_id === (int) $user->getKey())
                             <div class="flex flex-wrap items-center gap-2 sm:justify-end">
                                 <form action="{{ route('tasks.status.update', $task) }}" method="POST">
                                     @csrf
@@ -114,8 +114,6 @@
                                 <input type="hidden" name="is_completed" value="1">
                                 <button type="submit" class="rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-400">Confirm complete</button>
                             </form>
-                        @elseif ($user->isAdmin())
-                            <span class="self-start rounded-full border border-[#3A3A3A] px-3 py-2 text-sm text-gray-400 sm:self-center">View only · created by {{ $task->creator->name }}</span>
                         @else
                             <span class="self-start rounded-full border border-[#3A3A3A] px-3 py-2 text-sm text-gray-400 sm:self-center">Assigned task · view only</span>
                         @endif

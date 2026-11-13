@@ -19,7 +19,7 @@ vendor/bin/pint --test
 - `TagManagementTest`: Admin tag CRUD, required/unique/50-character validation, Member and guest denial, and pivot cleanup when a tag is deleted.
 - `TaskTagManagementTest`: selecting multiple tags, shared tag use across tasks, syncing and clearing tags on update, invalid/duplicate tag ID rejection, task ownership enforcement, and tag display/empty state.
 - `AdminUserManagementTest`: Admin-only paginated user list, Member/guest denial, role promotion/demotion, self-role protection, last-Admin guard, enum validation, and ignoring extra user fields.
-- `RoleBasedFrontendTest`: Admin and Member dashboard/navigation differences, Admin visibility of all task lists/details while cross-owner mutations remain denied, Member visibility of assigned tasks and notes, completion confirmation and Completed label, saved completion actor on task details, unrelated-Member detail isolation, restriction against reopening assigned tasks, status filters, and guest redirect.
+- `RoleBasedFrontendTest`: Admin and Member dashboard/navigation differences, Admin visibility and management of all tasks including cross-owner edit/delete/status/assignee actions, Member visibility of assigned tasks and notes, completion confirmation and Completed label, saved completion actor on task details, unrelated-Member detail isolation, restriction against reopening assigned tasks, status filters, and guest redirect.
 - `TaskModelTest`: Eloquent relationships, pivot timestamps and uniqueness, foreign keys and deletion rules, incomplete default, and declared title column length.
 - `UserRoleMigrationTest`: Member default for a pre-existing user when the role migration is applied in SQLite memory.
 - `UserRoleValidationTest`: supported Admin and Member enum values.

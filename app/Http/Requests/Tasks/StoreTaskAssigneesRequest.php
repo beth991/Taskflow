@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Tasks;
 
+use App\Models\Task;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 
@@ -9,11 +10,21 @@ class StoreTaskAssigneesRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        $task = $this->user()?->tasksCreated()->findOrFail($this->route('task'));
+        $user = $this->user();
 
-        Gate::authorize('manageAssignees', $task);
+        if ($user === null) {
+            return false;
+        }
 
-        return true;
+        $query = Task::query();
+
+        if (! $user->isAdmin()) {
+            $query->where('user_id', $user->getKey());
+        }
+
+        $task = $query->findOrFail($this->route('task'));
+
+        return Gate::forUser($user)->allows('manageAssignees', $task);
     }
 
     /** @return array<string, array<int, string>> */

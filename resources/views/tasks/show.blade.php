@@ -72,7 +72,7 @@
                 </div>
             </div>
 
-            @if ((int) $task->user_id === (int) auth()->id())
+            @if (auth()->user()->isAdmin() || (int) $task->user_id === (int) auth()->id())
                 <div class="mt-7 flex flex-wrap gap-3 border-t border-[#2A2A2A] pt-6">
                     <a href="{{ route('tasks.edit', $task) }}" class="rounded-lg border border-[#3A3A3A] px-4 py-2 text-sm text-gray-200 transition hover:border-gray-500 hover:text-white">Edit task</a>
                     @if ($task->is_completed)

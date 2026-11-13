@@ -90,7 +90,7 @@ class TaskController extends Controller
 
     public function edit(string $task): View
     {
-        $task = $this->ownedTask($task, 'update');
+        $task = $this->manageableTask($task, 'update');
         $task->load('assignees:id,name');
         $task->load('tags:id,name');
         $availableUsers = User::query()
@@ -104,7 +104,7 @@ class TaskController extends Controller
 
     public function update(UpdateTaskRequest $request, string $task): RedirectResponse
     {
-        $task = $this->ownedTask($task, 'update');
+        $task = $this->manageableTask($task, 'update');
         $validated = $request->validated();
         DB::transaction(function () use ($task, $request, $validated): void {
             $task->update($request->safe()->only(['title', 'notes']));
@@ -119,7 +119,7 @@ class TaskController extends Controller
 
     public function destroy(string $task): RedirectResponse
     {
-        $task = $this->ownedTask($task, 'delete');
+        $task = $this->manageableTask($task, 'delete');
         $task->delete();
 
         return redirect()->route('tasks.index')->with('status', 'Task deleted successfully.');
@@ -133,7 +133,27 @@ class TaskController extends Controller
         $isCreator = (int) $task->user_id === (int) $request->user()->getKey();
         $isCompleted = $request->boolean('is_completed');
 
-        abort_unless($isCreator || ($request->user()->isMember() && $isCompleted), 403);
+        abort_unless($request->user()->isAdmin() || $isCreator || ($request->user()->isMember() && $isCompleted), 403);
+
+        if ($isCompleted) {
+            $completion = Task::query()
+                ->whereKey($task->getKey())
+                ->where('is_completed', false);
+
+            if ($isCreator) {
+                $completion->where('user_id', $request->user()->getKey());
+            } elseif ($request->user()->isMember()) {
+                $completion->whereHas('assignees', fn ($assignees) => $assignees->whereKey($request->user()->getKey()));
+            }
+
+            $completion->update([
+                'is_completed' => true,
+                'completed_by' => $request->user()->getKey(),
+                'updated_at' => now(),
+            ]);
+
+            return redirect()->route('tasks.index')->with('status', 'Task status updated.');
+        }
 
         $task->is_completed = $isCompleted;
         $task->completed_by = $isCompleted ? $request->user()->getKey() : null;
@@ -144,7 +164,7 @@ class TaskController extends Controller
 
     public function storeAssignees(StoreTaskAssigneesRequest $request, string $task): RedirectResponse
     {
-        $task = $this->ownedTask($task, 'manageAssignees');
+        $task = $this->manageableTask($task, 'manageAssignees');
         $task->assignees()->syncWithoutDetaching($request->validated('user_ids'));
 
         return redirect()->route('tasks.edit', $task)->with('status', 'Assignees added successfully.');
@@ -152,15 +172,22 @@ class TaskController extends Controller
 
     public function destroyAssignee(RemoveTaskAssigneeRequest $request, string $task): RedirectResponse
     {
-        $task = $this->ownedTask($task, 'manageAssignees');
+        $task = $this->manageableTask($task, 'manageAssignees');
         $task->assignees()->detach($request->validated('user_id'));
 
         return redirect()->route('tasks.edit', $task)->with('status', 'Assignee removed successfully.');
     }
 
-    private function ownedTask(string $id, string $ability): Task
+    private function manageableTask(string $id, string $ability): Task
     {
-        $task = auth()->user()->tasksCreated()->findOrFail($id);
+        $user = auth()->user();
+        $query = Task::query();
+
+        if (! $user->isAdmin()) {
+            $query->where('user_id', $user->getKey());
+        }
+
+        $task = $query->findOrFail($id);
 
         Gate::authorize($ability, $task);
 

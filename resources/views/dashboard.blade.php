@@ -7,7 +7,7 @@
         @if (auth()->user()->isAdmin())
             <p class="text-sm font-medium text-blue-400">Admin workspace</p>
             <h1 class="mt-2 text-3xl font-semibold tracking-tight">Welcome, {{ auth()->user()->name }}</h1>
-            <p class="mt-4 max-w-2xl leading-7 text-gray-400">Review all team tasks, manage tasks you created, and assign teammates from your workspace.</p>
+            <p class="mt-4 max-w-2xl leading-7 text-gray-400">Review and manage all team tasks, track their status, and assign teammates from your workspace.</p>
         @else
             <p class="text-sm font-medium text-blue-400">Member workspace</p>
             <h1 class="mt-2 text-3xl font-semibold tracking-tight">Welcome, {{ auth()->user()->name }}</h1>
