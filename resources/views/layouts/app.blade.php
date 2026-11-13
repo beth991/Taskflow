@@ -12,12 +12,19 @@
 <body class="min-h-screen bg-[#0A0A0A] text-white antialiased">
     <div class="min-h-screen">
         <header class="border-b border-[#2A2A2A] bg-[#111111]">
-            <nav class="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8" aria-label="Main navigation">
+            <nav class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-8" aria-label="Main navigation">
                 <a class="text-lg font-semibold tracking-tight" href="{{ route('home') }}">Task<span class="text-blue-500">Flow</span></a>
-                <div class="flex items-center gap-3 text-sm">
+                <div class="flex flex-wrap items-center justify-end gap-3 text-sm">
                     @auth
-                        <a class="text-gray-300 transition hover:text-white" href="{{ route('dashboard') }}">Dashboard</a>
-                        <a class="text-gray-300 transition hover:text-white" href="{{ route('tasks.index') }}">Tasks</a>
+                        <span class="rounded-full border border-blue-500/30 bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-300">
+                            {{ auth()->user()->isAdmin() ? 'Admin' : 'Member' }}
+                        </span>
+                        <a class="text-gray-300 transition hover:text-white" href="{{ route('dashboard') }}">
+                            {{ auth()->user()->isAdmin() ? 'Admin dashboard' : 'Member dashboard' }}
+                        </a>
+                        <a class="text-gray-300 transition hover:text-white" href="{{ route('tasks.index') }}">
+                            {{ auth()->user()->isAdmin() ? 'My task workspace' : 'My tasks' }}
+                        </a>
                         <a class="rounded-lg bg-blue-500 px-3 py-2 font-medium text-white transition hover:bg-blue-400" href="{{ route('tasks.create') }}">New task</a>
                         <span class="hidden text-gray-500 sm:inline">{{ auth()->user()->name }}</span>
                         <form action="{{ route('logout') }}" method="POST">
