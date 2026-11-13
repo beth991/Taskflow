@@ -161,9 +161,17 @@ The Docker app and MySQL share an internal network. The app image runs PHP-FPM a
 
 Register at `/register`. Public registration validates the name, unique email, and confirmed password, then creates the account with the Member role. A submitted `role` field is not used. Passwords are hashed; registration passwords must be at least 8 characters and no more than 72 bytes.
 
+For local/testing only, `php artisan db:seed` creates this example Member account when it does not already exist:
+
+| Role | Email | Password |
+| --- | --- | --- |
+| Member | `test@example.com` | `password` |
+
+These are intentionally predictable test credentials. Never seed or use them in production; `DatabaseSeeder` skips the test account in production.
+
 ### Initial Admin account
 
-There is no public Admin registration and no sample Admin credential. Provision the first Admin deliberately using the existing `Database\Seeders\TaskFlowAdminSeeder`. The variable names are also listed in `.env.example`; set real values only in the untracked local `.env` or a secure process environment, never in a committed file:
+There is no public Admin registration or fixed Admin demo password. Provision the first Admin deliberately using the existing `Database\Seeders\TaskFlowAdminSeeder`. For a local test account, choose a name and email (for example, `TaskFlow Admin` and `admin@example.test`) and set a unique password yourself. The account's login email is the configured `TASKFLOW_ADMIN_EMAIL`, and its password is the configured `TASKFLOW_ADMIN_PASSWORD`. The variable names are also listed in `.env.example`; set real values only in the untracked local `.env` or a secure process environment, never in a committed file:
 
 - `TASKFLOW_ADMIN_NAME`
 - `TASKFLOW_ADMIN_EMAIL`
@@ -189,7 +197,7 @@ On a local or testing database, run the general seeder with:
 php artisan db:seed
 ```
 
-It creates a `Test User` only in `local` or `testing`. It returns without creating that user in production and does not provision an Admin. Do not use test accounts as production credentials; no demo password is documented here.
+It creates a `Test User` only in `local` or `testing`. It returns without creating that user in production and does not provision an Admin. The predictable Member example credentials above are for local/testing only and must never be used in production.
 
 ## Architecture and security
 
